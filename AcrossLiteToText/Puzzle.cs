@@ -185,8 +185,9 @@ namespace AcrossLiteToText
             // If there is both an across and a down, the across comes first.
             // Then proceed to next grid number.
 
-            StringBuilder sbAcross = new StringBuilder();
-            StringBuilder sbDown = new StringBuilder();
+
+            List<string> acrossClues = new List<string>();
+            List<string> downClues = new List<string>();
 
             i++;    // skip past \0 again
 
@@ -202,13 +203,7 @@ namespace AcrossLiteToText
 
                         if ((c == 0 || Grid[r, c - 1] == '.') && c != ColCount - 1 && Grid[r, c + 1] != '.')
                         {
-                            string clue = BinaryString(b, ref i);
-                            //string word = GetAcrossAnswer(r, c); // get Word from grid
-
-                            if (sbAcross.Length > 0)
-                                sbAcross.Append("|");
-
-                            sbAcross.Append(clue);
+                            acrossClues.Add(BinaryString(b, ref i));
                             i++;
                         }
 
@@ -216,21 +211,15 @@ namespace AcrossLiteToText
 
                         if ((r == 0 || Grid[r - 1, c] == '.') && r != RowCount - 1 && Grid[r + 1, c] != '.')
                         {
-                            string clue = BinaryString(b, ref i);
-                            //string word = GetDownAnswer(r, c); // get Word from grid
-
-                            if (sbDown.Length > 0)
-                                sbDown.Append("|");
-
-                            sbDown.Append(clue);
+                            downClues.Add(BinaryString(b, ref i));
                             i++;
                         }
                     }
                 }
             }
 
-            AcrossClues = sbAcross.ToString();
-            DownClues = sbDown.ToString();
+            AcrossClues = string.Join("\n", acrossClues);
+            DownClues = string.Join("\n", downClues);
 
             Notepad = BinaryString(b, ref i);
 
@@ -242,9 +231,9 @@ namespace AcrossLiteToText
             if (bIsDiagramless)
             {
                 for (int r = 0; r < RowCount; r++)
-                for (int c = 0; c < ColCount; c++)
-                    if (Grid[r, c] == '.')
-                        Grid[r, c] = ':';
+                    for (int c = 0; c < ColCount; c++)
+                        if (Grid[r, c] == '.')
+                            Grid[r, c] = ':';
             }
 
             IsValid = true;

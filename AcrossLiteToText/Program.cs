@@ -69,6 +69,7 @@ namespace AcrossLiteToText
             }
 
             Console.WriteLine(puz.Title);
+            Console.WriteLine(puz.AcrossClues);
 
             string sTextFileName = file.FullName.Replace(".puz", ".txt");
             bool bCreated = !File.Exists(sTextFileName);
