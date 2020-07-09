@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -76,13 +77,24 @@ namespace AcrossLiteToText
             bool bCreated = !File.Exists(sTextFileName);
 
             string sText = ConvertPuzzle(puz);
+            Encoding ansi = Encoding.GetEncoding("ISO-8859-1");
 
             //Console.WriteLine(ConvertPuzzle(puz));
 
 
             //AcrossLiteText alt = new AcrossLiteText(puz);
 
-            File.WriteAllText(sTextFileName, sText, Encoding.Default);
+            File.WriteAllText(sTextFileName, sText.Replace("\n", Environment.NewLine), ansi);
+
+            //List<string> z = new List<string>();
+            //z.Add("Many résumé submissions, these days");
+            //z.Add("This is line two");
+
+            
+
+            //File.WriteAllLines(sTextFileName, sText.Split('\n'), ansi);
+
+            //File.WriteAllText(sTextFileName, "Many résumé submissions, these days");
 
             //using (FileStream fs = new FileStream(sTextFileName, FileMode.CreateNew))
             //{
