@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 
 namespace AcrossLiteToText
 {
@@ -12,7 +13,7 @@ namespace AcrossLiteToText
 
             args = new string[5];   // bug bugbug remove !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-            args[0] = @"C:\Users\jimh\Desktop\TestFolder";
+            args[0] = @"C:\Users\jimh\Desktop\";
 
 
             if (args.Length > 0)
@@ -31,6 +32,9 @@ namespace AcrossLiteToText
                     foreach (FileInfo file in dir.GetFiles("*.puz"))            // loop through .puz files in this folder
                     {
                         OutputTextfile(file);
+
+
+                        break;      // bug bugbug remove !!!!!!!!!!!
                     }
                 }
                 else
@@ -68,15 +72,25 @@ namespace AcrossLiteToText
                 return;
             }
 
-            Console.WriteLine(puz.Title);
-            Console.WriteLine(puz.AcrossClues);
-
             string sTextFileName = file.FullName.Replace(".puz", ".txt");
             bool bCreated = !File.Exists(sTextFileName);
 
+            string sText = ConvertPuzzle(puz);
+
+            //Console.WriteLine(ConvertPuzzle(puz));
+
+
             //AcrossLiteText alt = new AcrossLiteText(puz);
 
-            //File.WriteAllText(sTextFileName, alt.Text);
+            File.WriteAllText(sTextFileName, sText, Encoding.Default);
+
+            //using (FileStream fs = new FileStream(sTextFileName, FileMode.CreateNew))
+            //{
+            //    using (StreamWriter writer = new StreamWriter(fs, Encoding.Default))
+            //    {
+            //        writer.Write(sText);
+            //    }
+            //}
 
             //Console.WriteLine("{0} {1}{2}", file.Name.Replace(".puz", ".txt"), bCreated ? "created" : "updated", alt.IsProblematic ? " - may need manual tweaking!" : "");
         }
@@ -96,5 +110,51 @@ namespace AcrossLiteToText
             Console.WriteLine("(c) 2020 by Jim Horne. All rights reserved.");
             Console.WriteLine();
         }
+
+
+
+        static string ConvertPuzzle(Puzzle puz)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            Out("<ACROSS PUZZLE V2>");
+            Out("<TITLE>");
+            Out("\t" + puz.Title);
+            Out("<AUTHOR>");
+            Out("\t" + puz.Author);
+            Out("<COPYRIGHT>");
+            Out("\t" + puz.Copyright);
+            Out("<SIZE>");
+            Out($"\t{puz.ColCount}x{puz.RowCount}");
+            Out("<GRID>");
+
+            for (int r = 0; r < puz.RowCount; r++)
+            {
+                sb.Append("\t");
+                for (int c = 0; c < puz.ColCount; c++)
+                {
+                    sb.Append(puz.Grid[r, c]);
+                }
+                sb.Append("\n");
+            }
+
+            Out("<ACROSS>");
+            Out(puz.AcrossClues);
+
+            Out("<DOWN>");
+            Out(puz.DownClues);
+
+
+            return sb.ToString();
+
+            void Out(string s)
+            {
+                sb.Append(s + "\n");
+            }
+        }
+
+
+        
     }
+
 }

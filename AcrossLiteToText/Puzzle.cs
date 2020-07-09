@@ -259,12 +259,26 @@ namespace AcrossLiteToText
 
         private static string BinaryString(byte[] b, ref int i)
         {
-            int nStart = i;
+
+            string s = "";
+
 
             while (b[i] != 0)
+            {
+                s += (char)b[i];
                 i++;
+            }
 
-            return Encoding.Default.GetString(b, nStart, i - nStart).Trim(); // default encoding means ANSI, not UTF-8
+            return s.Trim();
+
+            //int nStart = i;
+
+            //while (b[i] != 0)
+            //    i++;
+
+            //return Encoding.UTF8.GetString(b, nStart, i - nStart).Trim(); // default encoding means ANSI, not UTF-8
+
+
         }
 
 
