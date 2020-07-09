@@ -35,7 +35,7 @@ namespace AcrossLiteToText
                         OutputTextfile(file);
 
 
-                        break;      // bug bugbug remove !!!!!!!!!!!
+
                     }
                 }
                 else

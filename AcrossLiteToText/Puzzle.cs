@@ -6,21 +6,32 @@ using System.Text;
 
 namespace AcrossLiteToText
 {
-    class Puzzle
+    internal class Puzzle
     {
-        public bool IsValid { get; }                   // true if parsing successful
-        public bool IsLocked { get; }                               // true if the puzzle is locked, in which case IsValid will also be false
+        public bool IsValid { get; }                // true if parsing successful
+        public bool IsLocked { get; }               // bug
 
         public IEnumerable<string> Text => TextVersion();
 
+        //
+
+        private readonly string _title, _author, _copyright, _notepad;
+
+        private readonly int _rowCount, _colCount;
+
+        private readonly List<string> _acrossClues = new List<string>();
+        private readonly List<string> _downClues = new List<string>();
+
 
         private readonly char[,] _grid;
-        private int[,] _rebusNums;
+        private int[,] _rebusKeys;
         private bool[,] _hasCircle;
+
+        private readonly bool _hasCircles;
+        private readonly bool _isDiagramless;
 
         // Circles
 
-        public bool HasCircles { get; private set; }
         public byte[] CircleTableBytes { get; private set; }
         public int CircleCount { get; private set; }
 
@@ -28,32 +39,28 @@ namespace AcrossLiteToText
 
         public Dictionary<int, string> RebusDict { get; private set; }  // Rebus substitution dictionary
         public string RebusString { get; private set; }
-        public bool IsRebus { get; private set; }
+        public bool IsRebusPuzzle { get; private set; }
         public byte[] RebusTableBytes { get; private set; }
         public int RebusCount { get; private set; }
 
 
-        private readonly string _title, _author, _copyright, _notepad;
-
-        private readonly int _rowCount, _colCount;
-
-        readonly List<string> _acrossClues = new List<string>();
-        readonly List<string> _downClues = new List<string>();
+        
 
 
         private byte[] GridTableBytes { get; }
 
         public readonly Encoding Ansi = Encoding.GetEncoding("ISO-8859-1");
 
-        public Puzzle(byte[] b, bool bIsDiagramless = false)
+        public Puzzle(byte[] b)
         {
             const int columnsOffset = 0x2c;             // number of columns is at this offset in Across Lite file
             const int rowsOffset = 0x2d;                // number of rows is in next byte
             const int gridOffset = 0x34;                // standard location to start parsing grid data in binary stream
 
+
             // Reject locked puzzles unless they're Variety type
 
-            // BUG BUGBUG handle encrypted puzzles if answers are typed in
+            // BUG -- handle encrypted puzzles if answers are typed in
 
             IsLocked = b[0x32] != 0 || b[0x33] != 0;    // is Across Lite file encrypted?
 
@@ -68,7 +75,7 @@ namespace AcrossLiteToText
             // We now know how big the puzzle is so we can generate the grids
 
             _grid = new char[_rowCount, _colCount];
-            int[,] gridNums = new int[_rowCount, _colCount];
+            int[,] gridNumbers = new int[_rowCount, _colCount];
             int i = gridOffset;     // i indexes through byte array b[] starting at standard offset location
 
             // If the next byte is NOT either a empty square or a filled in square indicator,
@@ -93,33 +100,25 @@ namespace AcrossLiteToText
 
             // i now points to start of grid with unencrypted solution
 
-
-            GridTableBytes = new byte[_rowCount * _colCount];
-
-            int j = 0;
-
             for (int r = 0; r < _rowCount; r++)
             {
                 for (int c = 0; c < _colCount; c++)
                 {
                     char cLetter = (char)b[i++];
 
-                    if (cLetter == '.' || cLetter == ':')          // : is used for diagramless     BUG BUGBUG -- leave as is?
+                    if (cLetter == ':')
                     {
-                        cLetter = '.';      // normalize to .
+                        _isDiagramless = true;
+                        _grid[r, c] = '.';              // normalize to .
                     }
-
-                    _grid[r, c] = cLetter;
-                    GridTableBytes[j++] = (byte)cLetter;
+                    else
+                        _grid[r, c] = cLetter;
                 }
             }
 
             // Now that the grid is filled in, a second pass can accurately assign grid numbers
 
             int num = 1;
-            byte[] numTable = new byte[_rowCount * _colCount];
-
-            j = 0;
 
             for (int r = 0; r < _rowCount; r++)
             {
@@ -129,45 +128,40 @@ namespace AcrossLiteToText
                     {
                         if ((c == 0 || _grid[r, c - 1] == '.') && c != _colCount - 1 && _grid[r, c + 1] != '.')
                         {
-                            numTable[j] = (byte)num;
-                            gridNums[r, c] = num++;
+                            gridNumbers[r, c] = num++;
                         }
                         else if ((r == 0 || _grid[r - 1, c] == '.') && r != _rowCount - 1 && _grid[r + 1, c] != '.')
                         {
-                            numTable[j] = (byte)num;
-                            gridNums[r, c] = num++;
+                            gridNumbers[r, c] = num++;
                         }
                     }
-
-                    j++;
                 }
             }
-
 
             // Get Title and Author, adjusting i along the way
 
             i = gridOffset + (2 * _rowCount * _colCount); // move past grid
 
-            _title = BinaryString(b, ref i); // get title
+            _title = NextString();
             i++;        // skip past \0 delimiter
 
-            _author = BinaryString(b, ref i); // get and then parse Author
+            _author = NextString();
             i++;        // skip past \0 again
 
             // Get copyright string. Per Litsoft notes, the © symbol is automatically added,
             // so we can delete it if it's found here.
 
-            _copyright = BinaryString(b, ref i);
+            _copyright = NextString();
 
-            if (_copyright.StartsWith("©"))
+            while (_copyright.StartsWith("©"))
                 _copyright = _copyright.Substring(1).Trim();
 
-            IsRebus = bFixed ? ParseFixedRebus(b, i) : ParseRebus(b, i);
+            IsRebusPuzzle = bFixed ? ParseFixedRebus(b, i) : ParseRebus(b, i);
 
             // Sometimes Across Lite has fake rebus indicators. If no actual rebus entries are found,
             // sRebusString and byRebusTable should be manually reset.
 
-            if (!IsRebus)
+            if (!IsRebusPuzzle)
             {
                 RebusString = null;
                 RebusTableBytes = Array.Empty<byte>();
@@ -186,7 +180,7 @@ namespace AcrossLiteToText
             {
                 for (int c = 0; c < _colCount; c++)
                 {
-                    int gridNum = gridNums[r, c];
+                    int gridNum = gridNumbers[r, c];
 
                     if (gridNum != 0) // if there is a grid number here
                     {
@@ -194,7 +188,7 @@ namespace AcrossLiteToText
 
                         if ((c == 0 || _grid[r, c - 1] == '.') && c != _colCount - 1 && _grid[r, c + 1] != '.')
                         {
-                            _acrossClues.Add(BinaryString(b, ref i));
+                            _acrossClues.Add(NextString());
                             i++;
                         }
 
@@ -202,42 +196,43 @@ namespace AcrossLiteToText
 
                         if ((r == 0 || _grid[r - 1, c] == '.') && r != _rowCount - 1 && _grid[r + 1, c] != '.')
                         {
-                            _downClues.Add(BinaryString(b, ref i));
+                            _downClues.Add(NextString());
                             i++;
                         }
                     }
                 }
             }
 
-            _notepad = BinaryString(b, ref i);
+            _notepad = NextString();
 
-            HasCircles = ParseCircles(b, i); // Find all squares that have circles in them
+            _hasCircles = ParseCircles(b, i); // Find all squares that have circles in them
 
             // For diagramless, set black squares back to ':'
 
-            if (bIsDiagramless)
-            {
-                for (int r = 0; r < _rowCount; r++)
-                    for (int c = 0; c < _colCount; c++)
-                        if (_grid[r, c] == '.')
-                            _grid[r, c] = ':';
-            }
+            //if (_isDiagramless)
+            //{
+            //    for (int r = 0; r < _rowCount; r++)
+            //        for (int c = 0; c < _colCount; c++)
+            //            if (_grid[r, c] == '.')
+            //                _grid[r, c] = ':';
+            //}
 
             IsValid = true;
 
+            // Local
+
+            string NextString()
+            {
+                int nStart = i;
+
+                while (b[i] != 0)
+                    i++;
+
+                return Ansi.GetString(b, nStart, i - nStart).Trim();
+            }
+
         }
 
-
-
-        private string BinaryString(byte[] b, ref int i)
-        {
-            int nStart = i;
-
-            while (b[i] != 0)
-                i++;
-
-            return Ansi.GetString(b, nStart, i - nStart).Trim();
-        }
 
 
 
@@ -328,7 +323,7 @@ namespace AcrossLiteToText
                 i += 8;             // offset from GRBS
                 bFound = false;     // reset, so now check if rebus entries actually exist
 
-                _rebusNums = new int[_rowCount, _colCount];
+                _rebusKeys = new int[_rowCount, _colCount];
                 RebusTableBytes = new byte[_rowCount * _colCount];
 
                 for (int r = 0; r < _rowCount; r++)
@@ -338,7 +333,7 @@ namespace AcrossLiteToText
                         int nSubNumber = b[i++];
 
                         RebusTableBytes[j++] = (byte)nSubNumber;
-                        _rebusNums[r, c] = nSubNumber;
+                        _rebusKeys[r, c] = nSubNumber;
 
                         if (nSubNumber > 0)
                         {
@@ -395,7 +390,7 @@ namespace AcrossLiteToText
             {
                 i += 8; // fix up offset
 
-                _rebusNums = new int[_rowCount, _colCount];
+                _rebusKeys = new int[_rowCount, _colCount];
                 int nSubIndex = 0;
 
                 StringBuilder sbSubs = new StringBuilder();
@@ -414,7 +409,7 @@ namespace AcrossLiteToText
                             while (b[i] != 0)
                                 sb.Append((char)b[i++]);
 
-                            _rebusNums[r, c] = nSubIndex + 1;
+                            _rebusKeys[r, c] = nSubIndex + 1;
                             sbSubs.Append($"{nSubIndex:D2}:{sb};");
                             nSubIndex++;
                             RebusTableBytes[j] = (byte)nSubIndex;
@@ -494,9 +489,41 @@ namespace AcrossLiteToText
                 string line = "\t";
 
                 for (int c = 0; c < _colCount; c++)
-                    line += _grid[r, c];
+                {
+                    bool isRebus = IsRebusPuzzle && _rebusKeys[r, c] != 0;
+                    bool isCircle = _hasCircles && _hasCircle[r, c];
+
+                    if (isRebus && isCircle)
+                    {
+
+                    }
+                    else if (isRebus)
+                    {
+                        
+                    }
+                    else if (isCircle)
+                    {
+                        line += char.ToLower(_grid[r, c]);
+                    }
+                    else if (_isDiagramless && _grid[r, c] == '.')
+                    {
+                        line += ":";
+                    }
+                    else
+                    {
+                        line += _grid[r, c];
+                    }
+                }
 
                 lines.Add(line);
+            }
+
+            if (_hasCircles || IsRebusPuzzle)
+            {
+                lines.Add("<REBUS>");
+
+                if (_hasCircles)
+                    lines.Add("MARK;");
             }
 
             // Clues
