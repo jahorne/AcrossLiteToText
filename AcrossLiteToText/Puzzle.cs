@@ -7,7 +7,7 @@ namespace AcrossLiteToText
 {
     internal class Puzzle
     {
-        public readonly Encoding Ansi = Encoding.GetEncoding("ISO-8859-1");
+        public readonly Encoding AnsiEncoding = Encoding.GetEncoding("ISO-8859-1");
 
         public bool IsValid { get; }                // true if parsing successful
         public bool IsLocked { get; }               // bug
@@ -27,19 +27,15 @@ namespace AcrossLiteToText
 
         // Circles
 
-        private readonly bool _hasCircles;
-        private bool[,] _hasCircle;
+        private readonly bool _hasCircles;      // does this puzzle have any circles?
+        private bool[,] _hasCircle;             // do these individual grid squares have circles?
 
         // Rebus
 
-        private readonly bool _isRebus;
-        private int[,] _rebusKeys;
+        private readonly bool _isRebus;         // does this puzzle have any rebus entries?
+        private int[,] _rebusKeys;              // 0 means no rebus in this square, otherwise it's the dictionary key
 
         private Dictionary<int, string> _rebusDict = new Dictionary<int, string>();
-
-        private string _rebusString;        // bug -- why isn't this a local variable?
-
-
         
 
         public Puzzle(byte[] b)
@@ -150,15 +146,6 @@ namespace AcrossLiteToText
 
             _isRebus = bFixed ? ParseFixedRebus(b, i) : ParseRebus(b, i);
 
-            // Sometimes Across Lite has fake rebus indicators. If no actual rebus entries are found,
-            // sRebusString and byRebusTable should be manually reset.
-
-            if (!_isRebus)
-            {
-                _rebusString = null;
-                //_rebusTableBytes = Array.Empty<byte>();
-            }
-
 
             // Figure out clues. They are ordered in Across Lite in an odd way.
             // Look for the next numbered cell. If there is an across clue starting there,
@@ -210,7 +197,7 @@ namespace AcrossLiteToText
                 while (b[i] != 0)
                     i++;
 
-                return Ansi.GetString(b, nStart, i - nStart).Trim();
+                return AnsiEncoding.GetString(b, nStart, i - nStart).Trim();
             }
 
         }
@@ -325,8 +312,7 @@ namespace AcrossLiteToText
                     while (b[i] != 0)
                         sb.Append((char)b[i++]);
 
-                    _rebusString = sb.ToString();
-                    _rebusDict = CrackSubstring(_rebusString);
+                    _rebusDict = CrackSubstring(sb.ToString());
                 }
             }
 
@@ -396,8 +382,7 @@ namespace AcrossLiteToText
 
                 if (bFound)
                 {
-                    _rebusString = sbSubs.ToString();
-                    _rebusDict = CrackSubstring(_rebusString);
+                    _rebusDict = CrackSubstring(sbSubs.ToString());
                 }
             }
 

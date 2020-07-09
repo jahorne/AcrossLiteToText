@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace AcrossLiteToText
 {
@@ -9,8 +7,9 @@ namespace AcrossLiteToText
     {
         static void Main(string[] args)
         {
-            // Look for command line parameter
+            int count = 0;
 
+            // Look for command line parameter
 
             args = new string[5];   // bug bugbug remove !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -19,29 +18,25 @@ namespace AcrossLiteToText
 
             if (args.Length > 0)
             {
-                if (File.Exists(args[0]))                                       // is it a .puz file?
+                if (File.Exists(args[0]))                           // single file
                 {
                     FileInfo file = new FileInfo(args[0]);
                     OutputTextfile(file);
+                    count++;
                 }
-                else if (Directory.Exists(args[0]))                             // is it a folder?
+                else if (Directory.Exists(args[0]))                 // folder
                 {
-                    Console.WriteLine("Directory " + args[0] + " exists!");
-
                     DirectoryInfo dir = new DirectoryInfo(args[0]);
 
-                    foreach (FileInfo file in dir.GetFiles("*.puz"))            // loop through .puz files in this folder
+                    foreach (FileInfo file in dir.GetFiles("*.puz"))
                     {
                         OutputTextfile(file);
-
-
-
+                        count++;
                     }
                 }
-                else
-                {
-                    Console.Write("No file or directory found at " + args[0]);
-                }
+
+                if (count == 0)
+                    Console.WriteLine("No Across Lite files found");
             }
             else
             {
@@ -54,12 +49,9 @@ namespace AcrossLiteToText
         {
             if (!file.Name.EndsWith(".puz"))
             {
-                Console.WriteLine("ERROR: " + file.Name + " is not a correctly named Across Lite puzzle file");
+                Console.WriteLine($"ERROR: {file.Name} is not a correctly named Across Lite puzzle file");
                 return;
             }
-
-            Console.WriteLine($"Filename is {file.FullName}");
-
 
             Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
 
@@ -74,16 +66,10 @@ namespace AcrossLiteToText
             }
 
             string sTextFileName = file.FullName.Replace(".puz", ".txt");
-            bool bCreated = !File.Exists(sTextFileName);
-
-
-            File.WriteAllLines(sTextFileName, puz.Text, puz.Ansi);
-
-
-            
-
-            //Console.WriteLine("{0} {1}{2}", file.Name.Replace(".puz", ".txt"), bCreated ? "created" : "updated", alt.IsProblematic ? " - may need manual tweaking!" : "");
+            File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
+            Console.WriteLine($"{sTextFileName} created");
         }
+
 
         private static void DisplayUsage()
         {
@@ -100,52 +86,5 @@ namespace AcrossLiteToText
             Console.WriteLine("(c) 2020 by Jim Horne. All rights reserved.");
             Console.WriteLine();
         }
-
-
-
-        static string ConvertPuzzle(Puzzle puz)
-        {
-            /*
-            StringBuilder sb = new StringBuilder();
-
-            Out("<ACROSS PUZZLE V2>");
-            Out("<TITLE>");
-            Out("\t" + puz.Title);
-            Out("<AUTHOR>");
-            Out("\t" + puz.Author);
-            Out("<COPYRIGHT>");
-            Out("\t" + puz.Copyright);
-            Out("<SIZE>");
-            Out($"\t{puz.ColCount}x{puz.RowCount}");
-            Out("<GRID>");
-
-            for (int r = 0; r < puz.RowCount; r++)
-            {
-                sb.Append("\t");
-                for (int c = 0; c < puz.ColCount; c++)
-                {
-                    sb.Append(puz.Grid[r, c]);
-                }
-                sb.Append("\n");
-            }
-
-            Out("<ACROSS>");
-            Out(puz.AcrossClues);
-
-            Out("<DOWN>");
-            Out(puz.DownClues);
-
-
-            return sb.ToString();
-
-            void Out(string s)
-            {
-                sb.Append(s + "\n");
-            }
-            */
-            return null;
-        }
-            
     }
-
 }
