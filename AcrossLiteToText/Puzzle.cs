@@ -28,7 +28,7 @@ namespace AcrossLiteToText
         // Circles
 
         private readonly bool _hasCircles;      // does this puzzle have any circles?
-        private bool[,] _hasCircle;             // do these individual grid squares have circles?
+        private bool[,] _hasCircle;             // true if individual grid squares have circles?
 
         // Rebus
 
@@ -36,7 +36,8 @@ namespace AcrossLiteToText
         private int[,] _rebusKeys;              // 0 means no rebus in this square, otherwise it's the dictionary key
 
         private Dictionary<int, string> _rebusDict = new Dictionary<int, string>();
-        
+        private static char RebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
+
 
         public Puzzle(byte[] b)
         {
@@ -80,7 +81,7 @@ namespace AcrossLiteToText
             while (b[nOff] == 0x2E || b[nOff] == 0x3A) // go to first non-black square
                 nOff++;
 
-            if (b[nOff] != 0x2D) // if it's not a space character
+            if (b[nOff] != 0x2D)        // if it's not a space character
             {
                 bFixed = true;
                 i = nAnswerOffset;
@@ -131,10 +132,7 @@ namespace AcrossLiteToText
             i = gridOffset + (2 * _gridSize); // move past grid
 
             _title = NextString();
-            i++;        // skip past \0 delimiter
-
             _author = NextString();
-            i++;        // skip past \0 again
 
             // Get copyright string. Per Litsoft notes, the © symbol is automatically added,
             // so we can delete it if it's found here.
@@ -144,7 +142,7 @@ namespace AcrossLiteToText
             while (_copyright.StartsWith("©"))
                 _copyright = _copyright.Substring(1).Trim();
 
-            _isRebus = bFixed ? ParseFixedRebus(b, i) : ParseRebus(b, i);
+            //_isRebus = bFixed ? ParseFixedRebus(b, i) : ParseRebus(b, i);
 
 
             // Figure out clues. They are ordered in Across Lite in an odd way.
@@ -152,8 +150,6 @@ namespace AcrossLiteToText
             // that's the next clue. If there is only a down starting there, it's next.
             // If there is both an across and a down, the across comes first.
             // Then proceed to next grid number.
-
-            i++;    // skip past \0 again
 
             for (int r = 0; r < _rowCount; r++)
             {
@@ -168,7 +164,6 @@ namespace AcrossLiteToText
                         if ((c == 0 || _grid[r, c - 1] == '.') && c != _colCount - 1 && _grid[r, c + 1] != '.')
                         {
                             _acrossClues.Add(NextString());
-                            i++;
                         }
 
                         // Next look for a down clue at this same grid number using similar logic to above
@@ -176,7 +171,6 @@ namespace AcrossLiteToText
                         if ((r == 0 || _grid[r - 1, c] == '.') && r != _rowCount - 1 && _grid[r + 1, c] != '.')
                         {
                             _downClues.Add(NextString());
-                            i++;
                         }
                     }
                 }
@@ -185,6 +179,7 @@ namespace AcrossLiteToText
             _notepad = NextString();
 
             _hasCircles = ParseCircles(b, i); // Find all squares that have circles in them
+            _isRebus = bFixed ? ParseFixedRebus(b, i) : ParseRebus(b, i);
 
             IsValid = true;
 
@@ -192,18 +187,19 @@ namespace AcrossLiteToText
 
             string NextString()
             {
-                int nStart = i;
+                int nStart = i;     // remember starting location
 
                 while (b[i] != 0)
                     i++;
 
-                return AnsiEncoding.GetString(b, nStart, i - nStart).Trim();
+                // Convert to string, and move index past the trailing 0 byte
+
+                string str =  AnsiEncoding.GetString(b, nStart, i - nStart).Trim();
+                i++;
+                return str;
             }
 
         }
-
-
-
 
 
         /// <summary>
@@ -264,13 +260,13 @@ namespace AcrossLiteToText
         /// <param name="b">binary array to parse</param>
         /// <param name="i">offset in b to start searching</param>
         /// <returns>true iff at least one rebus entry was found</returns>
-        private bool ParseRebus(byte[] b, int i)
+        private bool ParseRebus(IReadOnlyList<byte> b, int i)
         {
             bool bFound = false; // assume not found
 
             // Search for GRBS meaning rebus substitution data
 
-            while (i < b.Length - _gridSize)
+            while (i < b.Count - _gridSize)
             {
                 if (b[i] == 'G' && b[i + 1] == 'R' && b[i + 2] == 'B' && b[i + 3] == 'S')
                 {
@@ -326,13 +322,13 @@ namespace AcrossLiteToText
         /// <param name="b"></param>
         /// <param name="i"></param>
         /// <returns>true iff at least one rebus entry was found</returns>
-        private bool ParseFixedRebus(byte[] b, int i)
+        private bool ParseFixedRebus(IReadOnlyList<byte> b, int i)
         {
             bool bFound = false; // assume none found
 
             // Search for RUSR meaning user rebus substitution data
 
-            while (i < b.Length - _gridSize)
+            while (i < b.Count - _gridSize)
             {
                 if (b[i] == 'R' && b[i + 1] == 'U' && b[i + 2] == 'S' && b[i + 3] == 'R')
                 {
@@ -348,11 +344,10 @@ namespace AcrossLiteToText
                 i += 8; // fix up offset
 
                 _rebusKeys = new int[_rowCount, _colCount];
-                int nSubIndex = 0;
+                int index = 0;
 
                 StringBuilder sbSubs = new StringBuilder();
-                //RebusTableBytes = new byte[_gridSize];
-                //int j = 0;
+
                 bFound = false;         // reset to check if rebus entries really exist
 
                 for (int r = 0; r < _rowCount; r++)
@@ -366,15 +361,13 @@ namespace AcrossLiteToText
                             while (b[i] != 0)
                                 sb.Append((char)b[i++]);
 
-                            _rebusKeys[r, c] = nSubIndex + 1;
-                            sbSubs.Append($"{nSubIndex:D2}:{sb};");
-                            nSubIndex++;
+                            _rebusKeys[r, c] = index + 1;
+                            sbSubs.Append($"{index:D2}:{sb};");
+                            index++;
                             bFound = true;
-                            //RebusTableBytes[j] = (byte)nSubIndex;
                         }
 
                         i++;
-                        //j++;
                     }
                 }
 
@@ -421,13 +414,12 @@ namespace AcrossLiteToText
 
         private IEnumerable<string> TextVersion()
         {
-            Dictionary<string, int> subVal = new Dictionary<string, int>();     // for standard rebus
-            Dictionary<string, char> subVal2 = new Dictionary<string, char>();  // for rebus AND circle
-            List<string> circleAndRebus = new List<string>();
+            Dictionary<string, int> rebusDict = new Dictionary<string, int>();              // for standard rebus
+            Dictionary<string, char> circleAndRebusDict = new Dictionary<string, char>();   // for rebus AND circle
+            List<string> circleAndRebusList = new List<string>();
 
-            int nKeyVal = 0;
-            char rebusCircleChar = 'z';     // start from the end to minimize conflict risk
-
+            int key = 0;                    // standard rebus uses numbers
+            char rebusCircleKey = 'z';      // start from the end to minimize conflict risk
 
             List<string> lines = new List<string>
             {
@@ -447,7 +439,7 @@ namespace AcrossLiteToText
 
             for (int r = 0; r < _rowCount; r++)
             {
-                string line = "\t";
+                string line = "\t";     // each row starts a new line
 
                 for (int c = 0; c < _colCount; c++)
                 {
@@ -456,24 +448,34 @@ namespace AcrossLiteToText
 
                     if (hasRebus && hasCircle)
                     {
+                        string rebusData = $"{_rebusDict[_rebusKeys[r, c]]}:{_rebusDict[_rebusKeys[r, c]][0]}";
 
+                        if (circleAndRebusDict.TryGetValue(rebusData, out char ch))
+                        {
+                            line += ch;
+                        }
+                        else
+                        {
+                            line += rebusCircleKey;
+                            circleAndRebusDict.Add(rebusData, rebusCircleKey);
+                            circleAndRebusList.Add($"{rebusCircleKey}:{_rebusDict[_rebusKeys[r, c]]}:{_rebusDict[_rebusKeys[r, c]][0]}");
+                            rebusCircleKey--;
+                        }
                     }
                     else if (hasRebus)
                     {
-                        string sSub = $"{_rebusDict[_rebusKeys[r, c]]}:{_grid[r, c]}";
+                        string rebusData = $"{_rebusDict[_rebusKeys[r, c]]}:{_grid[r, c]}";
 
-                        if (subVal.TryGetValue(sSub, out int n))
+                        if (rebusDict.TryGetValue(rebusData, out int n))
                         {
                             line += RebusKey(n);
                         }
                         else
                         {
-                            subVal.Add(sSub, nKeyVal);
-                            line += RebusKey(nKeyVal);
-                            nKeyVal++;
+                            rebusDict.Add(rebusData, key);
+                            line += RebusKey(key);
+                            key++;
                         }
-
-
                     }
                     else if (hasCircle)
                     {
@@ -501,17 +503,15 @@ namespace AcrossLiteToText
 
                 // Rebus strings are added to a list so they can be sorted, just to look prettier.
 
-                List<string> list = subVal.Select(sv => $"{RebusKey(sv.Value)}:{sv.Key}").ToList();
+                List<string> rebusDataList = rebusDict.Select(r => $"{RebusKey(r.Value)}:{r.Key}").ToList();
 
-                list.Sort();
+                rebusDataList.Sort();
 
-                foreach (string s in list)
-                    lines.Add(s);
+                lines.AddRange(rebusDataList);
 
                 // Output rebus into for squares that also have circles.
 
-                foreach (string s in circleAndRebus)
-                    lines.Add(s);
+                lines.AddRange(circleAndRebusList);
             }
 
             // Clues
@@ -528,11 +528,7 @@ namespace AcrossLiteToText
                 lines.Add(_notepad);
             }
 
-
             return lines;
-
-            char RebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
-
         }
     }
 }
