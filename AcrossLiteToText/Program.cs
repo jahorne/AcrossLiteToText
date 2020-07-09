@@ -77,14 +77,14 @@ namespace AcrossLiteToText
             bool bCreated = !File.Exists(sTextFileName);
 
             string sText = ConvertPuzzle(puz);
-            Encoding ansi = Encoding.GetEncoding("ISO-8859-1");
+            //Encoding ansi = Encoding.GetEncoding("ISO-8859-1");
 
             //Console.WriteLine(ConvertPuzzle(puz));
 
 
             //AcrossLiteText alt = new AcrossLiteText(puz);
 
-            File.WriteAllText(sTextFileName, sText.Replace("\n", Environment.NewLine), ansi);
+            File.WriteAllText(sTextFileName, sText.Replace("\n", Environment.NewLine), puz.Ansi);
 
             //List<string> z = new List<string>();
             //z.Add("Many résumé submissions, these days");

@@ -47,10 +47,9 @@ namespace AcrossLiteToText
         const int GridOffset = 0x34;                    // standard location to start parsing grid data in binary stream
 
 
-        // BUG BUGBUG CHECK THESE
-
-        private byte[] _numTable;                   // linear array of grid clue numbers
         private byte[] GridTableBytes { get; }
+
+        public readonly Encoding Ansi = Encoding.GetEncoding("ISO-8859-1");
 
         public Puzzle(byte[] b, bool bIsDiagramless = false)
         {
@@ -125,7 +124,7 @@ namespace AcrossLiteToText
             // Now that the grid is filled in, a second pass can accurately assign grid numbers
 
             int num = 1;
-            _numTable = new byte[RowCount * ColCount];
+            byte[] numTable = new byte[RowCount * ColCount];
 
             j = 0;
 
@@ -137,12 +136,12 @@ namespace AcrossLiteToText
                     {
                         if ((c == 0 || Grid[r, c - 1] == '.') && c != ColCount - 1 && Grid[r, c + 1] != '.')
                         {
-                            _numTable[j] = (byte)num;
+                            numTable[j] = (byte)num;
                             GridNums[r, c] = num++;
                         }
                         else if ((r == 0 || Grid[r - 1, c] == '.') && r != RowCount - 1 && Grid[r + 1, c] != '.')
                         {
-                            _numTable[j] = (byte)num;
+                            numTable[j] = (byte)num;
                             GridNums[r, c] = num++;
                         }
                     }
@@ -257,28 +256,14 @@ namespace AcrossLiteToText
 
 
 
-        private static string BinaryString(byte[] b, ref int i)
+        private string BinaryString(byte[] b, ref int i)
         {
-
-            string s = "";
-
+            int nStart = i;
 
             while (b[i] != 0)
-            {
-                s += (char)b[i];
                 i++;
-            }
 
-            return s.Trim();
-
-            //int nStart = i;
-
-            //while (b[i] != 0)
-            //    i++;
-
-            //return Encoding.UTF8.GetString(b, nStart, i - nStart).Trim(); // default encoding means ANSI, not UTF-8
-
-
+            return Ansi.GetString(b, nStart, i - nStart).Trim();
         }
 
 
