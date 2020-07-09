@@ -76,33 +76,11 @@ namespace AcrossLiteToText
             string sTextFileName = file.FullName.Replace(".puz", ".txt");
             bool bCreated = !File.Exists(sTextFileName);
 
-            string sText = ConvertPuzzle(puz);
-            //Encoding ansi = Encoding.GetEncoding("ISO-8859-1");
 
-            //Console.WriteLine(ConvertPuzzle(puz));
+            File.WriteAllLines(sTextFileName, puz.Text, puz.Ansi);
 
-
-            //AcrossLiteText alt = new AcrossLiteText(puz);
-
-            File.WriteAllText(sTextFileName, sText.Replace("\n", Environment.NewLine), puz.Ansi);
-
-            //List<string> z = new List<string>();
-            //z.Add("Many résumé submissions, these days");
-            //z.Add("This is line two");
 
             
-
-            //File.WriteAllLines(sTextFileName, sText.Split('\n'), ansi);
-
-            //File.WriteAllText(sTextFileName, "Many résumé submissions, these days");
-
-            //using (FileStream fs = new FileStream(sTextFileName, FileMode.CreateNew))
-            //{
-            //    using (StreamWriter writer = new StreamWriter(fs, Encoding.Default))
-            //    {
-            //        writer.Write(sText);
-            //    }
-            //}
 
             //Console.WriteLine("{0} {1}{2}", file.Name.Replace(".puz", ".txt"), bCreated ? "created" : "updated", alt.IsProblematic ? " - may need manual tweaking!" : "");
         }
@@ -127,6 +105,7 @@ namespace AcrossLiteToText
 
         static string ConvertPuzzle(Puzzle puz)
         {
+            /*
             StringBuilder sb = new StringBuilder();
 
             Out("<ACROSS PUZZLE V2>");
@@ -163,10 +142,10 @@ namespace AcrossLiteToText
             {
                 sb.Append(s + "\n");
             }
+            */
+            return null;
         }
-
-
-        
+            
     }
 
 }

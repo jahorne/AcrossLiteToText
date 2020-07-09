@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace AcrossLiteToText
@@ -9,22 +10,13 @@ namespace AcrossLiteToText
     {
         public bool IsValid { get; }                   // true if parsing successful
         public bool IsLocked { get; }                               // true if the puzzle is locked, in which case IsValid will also be false
-        public int RowCount { get; }                                // grid dimensions
-        public int ColCount { get; }
-        public string Title { get; }                   // Text strings are directly from Across Lite but are cleaned up to remove curly quotes and apostophes
-        public string Author { get; }
-        public string Copyright { get; }
-        public string Notepad { get; }
-        public string AcrossClues { get; }             // Clues separated by \r\n
-        public string DownClues { get;}
+
+        public IEnumerable<string> Text => TextVersion();
 
 
-        // Public arrays with letters, numbers, substitutions, and circle data
-
-        public char[,] Grid { get; private set; }               // array that holds the letters in each box
-        public int[,] GridNums { get; private set; }            // array that has the grid numbers
-        public int[,] RebusNums { get; private set; }           // array that has indexes for substitution table
-        public bool[,] HasCircle { get; private set; }          // true for each square with a circle
+        private readonly char[,] _grid;
+        private int[,] _rebusNums;
+        private bool[,] _hasCircle;
 
         // Circles
 
@@ -40,11 +32,13 @@ namespace AcrossLiteToText
         public byte[] RebusTableBytes { get; private set; }
         public int RebusCount { get; private set; }
 
-        // Constants
 
-        const int ColumnsOffset = 0x2c;                  // number of columns is at this offset in Across Lite file
-        const int RowsOffset = 0x2d;                    // number of rows is in next byte
-        const int GridOffset = 0x34;                    // standard location to start parsing grid data in binary stream
+        private readonly string _title, _author, _copyright, _notepad;
+
+        private readonly int _rowCount, _colCount;
+
+        readonly List<string> _acrossClues = new List<string>();
+        readonly List<string> _downClues = new List<string>();
 
 
         private byte[] GridTableBytes { get; }
@@ -53,8 +47,13 @@ namespace AcrossLiteToText
 
         public Puzzle(byte[] b, bool bIsDiagramless = false)
         {
+            const int columnsOffset = 0x2c;             // number of columns is at this offset in Across Lite file
+            const int rowsOffset = 0x2d;                // number of rows is in next byte
+            const int gridOffset = 0x34;                // standard location to start parsing grid data in binary stream
+
             // Reject locked puzzles unless they're Variety type
-            // Admins can load locked puzzles
+
+            // BUG BUGBUG handle encrypted puzzles if answers are typed in
 
             IsLocked = b[0x32] != 0 || b[0x33] != 0;    // is Across Lite file encrypted?
 
@@ -63,14 +62,14 @@ namespace AcrossLiteToText
 
             // Looks like we have a good puzzle
 
-            ColCount = b[ColumnsOffset];        // number of columns
-            RowCount = b[RowsOffset];           // number of rows
+            _colCount = b[columnsOffset];        // number of columns
+            _rowCount = b[rowsOffset];           // number of rows
 
             // We now know how big the puzzle is so we can generate the grids
 
-            Grid = new char[RowCount, ColCount];
-            GridNums = new int[RowCount, ColCount];
-            int i = GridOffset;     // i indexes through byte array b[] starting at standard offset location
+            _grid = new char[_rowCount, _colCount];
+            int[,] gridNums = new int[_rowCount, _colCount];
+            int i = gridOffset;     // i indexes through byte array b[] starting at standard offset location
 
             // If the next byte is NOT either a empty square or a filled in square indicator,
             // the puzzle has been fixed up, either to include Subs in older puzzles or to show solved but
@@ -79,7 +78,7 @@ namespace AcrossLiteToText
             // 0x2E means black square (block) and 0x2D is empty square.
             // Note 0x2E is valid in both sections so find first non black square and check if it's a blank
 
-            int nAnswerOffset = GridOffset + (RowCount * ColCount);
+            int nAnswerOffset = gridOffset + (_rowCount * _colCount);
             int nOff = nAnswerOffset;
             bool bFixed = false;        // assume didn't have to manually enter solution (fixing is necessary for old V1 rebus puzzles)
 
@@ -94,29 +93,23 @@ namespace AcrossLiteToText
 
             // i now points to start of grid with unencrypted solution
 
-            // fill grid and check letters used and scrabble scores
 
-            bool[] bUsed = new bool[26];
-            GridTableBytes = new byte[RowCount * ColCount];
+            GridTableBytes = new byte[_rowCount * _colCount];
+
             int j = 0;
 
-            for (int r = 0; r < RowCount; r++)
+            for (int r = 0; r < _rowCount; r++)
             {
-                for (int c = 0; c < ColCount; c++)
+                for (int c = 0; c < _colCount; c++)
                 {
                     char cLetter = (char)b[i++];
 
-                    if (cLetter >= 'A' && cLetter <= 'Z')
-                    {
-                        int nLetterNum = cLetter - 'A';
-                        bUsed[nLetterNum] = true;
-                    }
-                    else if (cLetter == '.' || cLetter == ':')          // : is used for diagramless
+                    if (cLetter == '.' || cLetter == ':')          // : is used for diagramless     BUG BUGBUG -- leave as is?
                     {
                         cLetter = '.';      // normalize to .
                     }
 
-                    Grid[r, c] = cLetter;
+                    _grid[r, c] = cLetter;
                     GridTableBytes[j++] = (byte)cLetter;
                 }
             }
@@ -124,25 +117,25 @@ namespace AcrossLiteToText
             // Now that the grid is filled in, a second pass can accurately assign grid numbers
 
             int num = 1;
-            byte[] numTable = new byte[RowCount * ColCount];
+            byte[] numTable = new byte[_rowCount * _colCount];
 
             j = 0;
 
-            for (int r = 0; r < RowCount; r++)
+            for (int r = 0; r < _rowCount; r++)
             {
-                for (int c = 0; c < ColCount; c++)
+                for (int c = 0; c < _colCount; c++)
                 {
-                    if (Grid[r, c] != '.')
+                    if (_grid[r, c] != '.')
                     {
-                        if ((c == 0 || Grid[r, c - 1] == '.') && c != ColCount - 1 && Grid[r, c + 1] != '.')
+                        if ((c == 0 || _grid[r, c - 1] == '.') && c != _colCount - 1 && _grid[r, c + 1] != '.')
                         {
                             numTable[j] = (byte)num;
-                            GridNums[r, c] = num++;
+                            gridNums[r, c] = num++;
                         }
-                        else if ((r == 0 || Grid[r - 1, c] == '.') && r != RowCount - 1 && Grid[r + 1, c] != '.')
+                        else if ((r == 0 || _grid[r - 1, c] == '.') && r != _rowCount - 1 && _grid[r + 1, c] != '.')
                         {
                             numTable[j] = (byte)num;
-                            GridNums[r, c] = num++;
+                            gridNums[r, c] = num++;
                         }
                     }
 
@@ -153,20 +146,23 @@ namespace AcrossLiteToText
 
             // Get Title and Author, adjusting i along the way
 
-            i = GridOffset + (2 * RowCount * ColCount); // move past grid
+            i = gridOffset + (2 * _rowCount * _colCount); // move past grid
 
-            Title = BinaryString(b, ref i); // get title
+            _title = BinaryString(b, ref i); // get title
             i++;        // skip past \0 delimiter
 
-            Author = BinaryString(b, ref i); // get and then parse Author
+            _author = BinaryString(b, ref i); // get and then parse Author
             i++;        // skip past \0 again
 
-            Copyright = BinaryString(b, ref i);     // get Copyright
+            // Get copyright string. Per Litsoft notes, the © symbol is automatically added,
+            // so we can delete it if it's found here.
 
-            if (bFixed)
-                IsRebus = ParseFixedRebus(b, i);
-            else
-                IsRebus = ParseRebus(b, i);
+            _copyright = BinaryString(b, ref i);
+
+            if (_copyright.StartsWith("©"))
+                _copyright = _copyright.Substring(1).Trim();
+
+            IsRebus = bFixed ? ParseFixedRebus(b, i) : ParseRebus(b, i);
 
             // Sometimes Across Lite has fake rebus indicators. If no actual rebus entries are found,
             // sRebusString and byRebusTable should be manually reset.
@@ -184,75 +180,52 @@ namespace AcrossLiteToText
             // If there is both an across and a down, the across comes first.
             // Then proceed to next grid number.
 
-
-            List<string> acrossClues = new List<string>();
-            List<string> downClues = new List<string>();
-
             i++;    // skip past \0 again
 
-            for (int r = 0; r < RowCount; r++)
+            for (int r = 0; r < _rowCount; r++)
             {
-                for (int c = 0; c < ColCount; c++)
+                for (int c = 0; c < _colCount; c++)
                 {
-                    int gridNum = GridNums[r, c];
+                    int gridNum = gridNums[r, c];
 
                     if (gridNum != 0) // if there is a grid number here
                     {
                         // Look first for an across clue
 
-                        if ((c == 0 || Grid[r, c - 1] == '.') && c != ColCount - 1 && Grid[r, c + 1] != '.')
+                        if ((c == 0 || _grid[r, c - 1] == '.') && c != _colCount - 1 && _grid[r, c + 1] != '.')
                         {
-                            acrossClues.Add(BinaryString(b, ref i));
+                            _acrossClues.Add(BinaryString(b, ref i));
                             i++;
                         }
 
                         // Next look for a down clue at this same grid number using similar logic to above
 
-                        if ((r == 0 || Grid[r - 1, c] == '.') && r != RowCount - 1 && Grid[r + 1, c] != '.')
+                        if ((r == 0 || _grid[r - 1, c] == '.') && r != _rowCount - 1 && _grid[r + 1, c] != '.')
                         {
-                            downClues.Add(BinaryString(b, ref i));
+                            _downClues.Add(BinaryString(b, ref i));
                             i++;
                         }
                     }
                 }
             }
 
-            AcrossClues = string.Join("\n", acrossClues);
-            DownClues = string.Join("\n", downClues);
-
-            Notepad = BinaryString(b, ref i);
+            _notepad = BinaryString(b, ref i);
 
             HasCircles = ParseCircles(b, i); // Find all squares that have circles in them
-
 
             // For diagramless, set black squares back to ':'
 
             if (bIsDiagramless)
             {
-                for (int r = 0; r < RowCount; r++)
-                    for (int c = 0; c < ColCount; c++)
-                        if (Grid[r, c] == '.')
-                            Grid[r, c] = ':';
+                for (int r = 0; r < _rowCount; r++)
+                    for (int c = 0; c < _colCount; c++)
+                        if (_grid[r, c] == '.')
+                            _grid[r, c] = ':';
             }
 
             IsValid = true;
 
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -267,52 +240,6 @@ namespace AcrossLiteToText
         }
 
 
-        /// <summary>
-        /// GetAcrossAnswer determines the across word at the specified grid location
-        /// </summary>
-        /// <param name="r">row</param>
-        /// <param name="c">col</param>
-        /// <returns></returns>
-        private string GetAcrossAnswer(int r, int c)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            while (c < ColCount && Grid[r, c] != '.')
-            {
-                if (IsRebus && RebusNums[r, c] > 0)
-                    sb.Append(RebusDict[RebusNums[r, c]]);
-                else
-                    sb.Append(Grid[r, c]);
-
-                c++;
-            }
-
-            return sb.ToString();
-        }
-
-
-        /// <summary>
-        /// GetDownAnswer determines the down word at the specified grid location
-        /// </summary>
-        /// <param name="r">row</param>
-        /// <param name="c">col</param>
-        /// <returns></returns>
-        private string GetDownAnswer(int r, int c)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            while (r < RowCount && Grid[r, c] != '.')
-            {
-                if (IsRebus && RebusNums[r, c] > 0)
-                    sb.Append(RebusDict[RebusNums[r, c]]);
-                else
-                    sb.Append(Grid[r, c]);
-
-                r++;
-            }
-
-            return sb.ToString();
-        }
 
 
         /// <summary>
@@ -328,7 +255,7 @@ namespace AcrossLiteToText
 
             // Search for GEXT which marks the start of the circle data
 
-            while (i < (b.Length - (RowCount * ColCount)))
+            while (i < (b.Length - (_rowCount * _colCount)))
             {
                 if (b[i] == 'G' && b[i + 1] == 'E' && b[i + 2] == 'X' && b[i + 3] == 'T')
                 {
@@ -345,23 +272,23 @@ namespace AcrossLiteToText
                 i += 8;             // offset from GEXT
                 bFound = false;     // reset, so now check if circles actually found
 
-                HasCircle = new bool[RowCount, ColCount];
-                CircleTableBytes = new byte[RowCount * ColCount];
+                _hasCircle = new bool[_rowCount, _colCount];
+                CircleTableBytes = new byte[_rowCount * _colCount];
 
-                for (int r = 0; r < RowCount; r++)
+                for (int r = 0; r < _rowCount; r++)
                 {
-                    for (int c = 0; c < ColCount; c++, i++, j++)
+                    for (int c = 0; c < _colCount; c++, i++, j++)
                     {
                         if (b[i] == 0x80 || b[i] == 0xC0)   // 0x80 means circle, 0xC0 means circle in diagramless
                         {
-                            HasCircle[r, c] = true;
+                            _hasCircle[r, c] = true;
                             CircleTableBytes[j] = 1;
                             CircleCount++;
                             bFound = true;
                         }
                         else
                         {
-                            HasCircle[r, c] = false;
+                            _hasCircle[r, c] = false;
                             CircleTableBytes[j] = 0;
                         }
                     }
@@ -384,7 +311,7 @@ namespace AcrossLiteToText
 
             // Search for GRBS meaning rebus substitution data
 
-            while (i < (b.Length - (RowCount * ColCount)))
+            while (i < (b.Length - (_rowCount * _colCount)))
             {
                 if (b[i] == 'G' && b[i + 1] == 'R' && b[i + 2] == 'B' && b[i + 3] == 'S')
                 {
@@ -401,17 +328,17 @@ namespace AcrossLiteToText
                 i += 8;             // offset from GRBS
                 bFound = false;     // reset, so now check if rebus entries actually exist
 
-                RebusNums = new int[RowCount, ColCount];
-                RebusTableBytes = new byte[RowCount * ColCount];
+                _rebusNums = new int[_rowCount, _colCount];
+                RebusTableBytes = new byte[_rowCount * _colCount];
 
-                for (int r = 0; r < RowCount; r++)
+                for (int r = 0; r < _rowCount; r++)
                 {
-                    for (int c = 0; c < ColCount; c++)
+                    for (int c = 0; c < _colCount; c++)
                     {
                         int nSubNumber = b[i++];
 
                         RebusTableBytes[j++] = (byte)nSubNumber;
-                        RebusNums[r, c] = nSubNumber;
+                        _rebusNums[r, c] = nSubNumber;
 
                         if (nSubNumber > 0)
                         {
@@ -453,7 +380,7 @@ namespace AcrossLiteToText
 
             // Search for RUSR meaning user rebus substitution data
 
-            while (i < (b.Length - (RowCount * ColCount)))
+            while (i < (b.Length - (_rowCount * _colCount)))
             {
                 if (b[i] == 'R' && b[i + 1] == 'U' && b[i + 2] == 'S' && b[i + 3] == 'R')
                 {
@@ -468,16 +395,16 @@ namespace AcrossLiteToText
             {
                 i += 8; // fix up offset
 
-                RebusNums = new int[RowCount, ColCount];
+                _rebusNums = new int[_rowCount, _colCount];
                 int nSubIndex = 0;
 
                 StringBuilder sbSubs = new StringBuilder();
-                RebusTableBytes = new byte[RowCount * ColCount];
+                RebusTableBytes = new byte[_rowCount * _colCount];
                 int j = 0;
 
-                for (int r = 0; r < RowCount; r++)
+                for (int r = 0; r < _rowCount; r++)
                 {
-                    for (int c = 0; c < ColCount; c++)
+                    for (int c = 0; c < _colCount; c++)
                     {
                         if (b[i] != 0)
                         {
@@ -487,7 +414,7 @@ namespace AcrossLiteToText
                             while (b[i] != 0)
                                 sb.Append((char)b[i++]);
 
-                            RebusNums[r, c] = nSubIndex + 1;
+                            _rebusNums[r, c] = nSubIndex + 1;
                             sbSubs.Append($"{nSubIndex:D2}:{sb};");
                             nSubIndex++;
                             RebusTableBytes[j] = (byte)nSubIndex;
@@ -543,5 +470,52 @@ namespace AcrossLiteToText
             return subKeyVal;
         }
 
+
+        private IEnumerable<string> TextVersion()
+        {
+            List<string> lines = new List<string>
+            {
+                "<ACROSS PUZZLE V2>",
+                "<TITLE>",
+                $"\t{_title}",
+                "<AUTHOR>",
+                $"\t{_author}",
+                "<COPYRIGHT>",
+                $"\t{_copyright}",
+                "<SIZE>",
+                $"\t{_colCount}x{_rowCount}",
+                "<GRID>"
+            };
+
+            // Output the grid
+
+            for (int r = 0; r < _rowCount; r++)
+            {
+                string line = "\t";
+
+                for (int c = 0; c < _colCount; c++)
+                    line += _grid[r, c];
+
+                lines.Add(line);
+            }
+
+            // Clues
+
+            lines.Add("<ACROSS>");
+            lines.AddRange(_acrossClues.Select(line => $"\t{line}"));
+
+            lines.Add("<DOWN>");
+            lines.AddRange(_downClues.Select(line => $"\t{line}"));
+
+            if (!string.IsNullOrEmpty(_notepad))
+            {
+                lines.Add("<NOTEPAD>");
+                lines.Add(_notepad);
+            }
+
+
+            return lines;
+
+        }
     }
 }
