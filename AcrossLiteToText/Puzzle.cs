@@ -59,7 +59,7 @@ namespace AcrossLiteToText
 
             _colCount = b[columnsOffset];           // number of columns
             _rowCount = b[rowsOffset];              // number of rows
-            _gridSize = _colCount * _rowCount;    // size of grid info in byte array
+            _gridSize = _colCount * _rowCount;      // size of grid info in byte array
 
             // We now know how big the puzzle is so we can generate the grids
 
@@ -157,7 +157,7 @@ namespace AcrossLiteToText
                 {
                     int gridNum = gridNumbers[r, c];
 
-                    if (gridNum != 0) // if there is a grid number here
+                    if (gridNum != 0)   // if there is a grid number here
                     {
                         // Look first for an across clue
 
@@ -192,10 +192,9 @@ namespace AcrossLiteToText
                 while (b[i] != 0)
                     i++;
 
-                // Convert to string, and move index past the trailing 0 byte
+                string str = AnsiEncoding.GetString(b, nStart, i - nStart).Trim();
 
-                string str =  AnsiEncoding.GetString(b, nStart, i - nStart).Trim();
-                i++;
+                i++;                // move index past trailing '\0' so it's ready for the next NexString()
                 return str;
             }
 
@@ -203,19 +202,18 @@ namespace AcrossLiteToText
 
 
         /// <summary>
-        /// Fills byCircle[r,c] array with true for each square that includes a circle and false otherwise,
-        /// and also populates 1-D byCircleTable[n] array for SQL and updates public var nCircleCount.
+        /// Fills _hasCircle[r,c] array with true for each square that includes a circle, and false otherwise.
         /// </summary>
         /// <param name="b">binary array to parse</param>
         /// <param name="i">offset in b to start searching</param>
-        /// <returns>true iff at least one circle was found</returns>
-        private bool ParseCircles(byte[] b, int i)
+        /// <returns>true if at least one circle was found</returns>
+        private bool ParseCircles(IReadOnlyList<byte> b, int i)
         {
             bool bFound = false; // assume none found
 
             // Search for GEXT which marks the start of the circle data
 
-            while (i < b.Length - _gridSize)
+            while (i < b.Count - _gridSize)
             {
                 if (b[i] == 'G' && b[i + 1] == 'E' && b[i + 2] == 'X' && b[i + 3] == 'T')
                 {
@@ -242,10 +240,6 @@ namespace AcrossLiteToText
                             _hasCircle[r, c] = true;
                             bFound = true;
                         }
-                        else
-                        {
-                            _hasCircle[r, c] = false;
-                        }
                     }
                 }
             }
@@ -259,7 +253,7 @@ namespace AcrossLiteToText
         /// </summary>
         /// <param name="b">binary array to parse</param>
         /// <param name="i">offset in b to start searching</param>
-        /// <returns>true iff at least one rebus entry was found</returns>
+        /// <returns>true if at least one rebus entry was found</returns>
         private bool ParseRebus(IReadOnlyList<byte> b, int i)
         {
             bool bFound = false; // assume not found
@@ -321,7 +315,7 @@ namespace AcrossLiteToText
         /// </summary>
         /// <param name="b"></param>
         /// <param name="i"></param>
-        /// <returns>true iff at least one rebus entry was found</returns>
+        /// <returns>true if at least one rebus entry was found</returns>
         private bool ParseFixedRebus(IReadOnlyList<byte> b, int i)
         {
             bool bFound = false; // assume none found
