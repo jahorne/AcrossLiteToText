@@ -207,11 +207,12 @@ namespace AcrossLiteToText
             // and they also fill the relevant private property variables.
 
             _hasCircles = ParseCircles(b, i);
-            //_isRebus = isManuallyFilled ? ParseFixedRebus(b, i) : ParseRebus(b, i);
-
             _isRebus = ParseRebus(isManuallyFilled ? "RUSR" : "GRBS", b, i);
 
             IsValid = true;
+
+            // End of construcdtor
+
 
             //
             // NextString() is a LOCAL FUNCTION so it has access to the byte array b and the index i.
@@ -242,13 +243,14 @@ namespace AcrossLiteToText
         /// <returns>true if at least one circle was found</returns>
         private bool ParseCircles(IReadOnlyList<byte> b, int i)
         {
-            bool bFound = false; // assume none found
+            string marker = "GEXT";     // marks the start of the circle data
+            bool bFound = false;        // assume none found
 
             // Search for GEXT which marks the start of the circle data
 
             while (i < b.Count - _gridSize)
             {
-                if (b[i] == 'G' && b[i + 1] == 'E' && b[i + 2] == 'X' && b[i + 3] == 'T')
+                if (b[i] == marker[0] && b[i + 1] == marker[1] && b[i + 2] == marker[2] && b[i + 3] == marker[3])
                 {
                     bFound = true; // need to check later
                     break;
@@ -257,10 +259,10 @@ namespace AcrossLiteToText
                 i++;
             }
 
-            if (bFound)
+            if (bFound)             // if marker found (might be bogus)
             {
                 i += 8;             // offset from GEXT
-                bFound = false;     // reset, so now check if circles actually found
+                bFound = false;     // reset
 
                 _hasCircle = new bool[_rowCount, _colCount];
 
@@ -268,7 +270,9 @@ namespace AcrossLiteToText
                 {
                     for (int c = 0; c < _colCount; c++, i++)
                     {
-                        if (b[i] == 0x80 || b[i] == 0xC0)   // 0x80 means circle, 0xC0 means circle in diagramless
+                        // 0x80 means circle, 0xC0 means circle in diagramless
+
+                        if (b[i] == 0x80 || b[i] == 0xC0)
                         {
                             _hasCircle[r, c] = true;
                             bFound = true;
@@ -303,10 +307,10 @@ namespace AcrossLiteToText
                 i++;
             }
 
-            if (bFound)             // if marker found
+            if (bFound)             // if marker found (might be bogus)
             {
                 i += 8;             // offset from marker
-                bFound = false;     // reset, so now check if rebus entries actually exist
+                bFound = false;     // reset
 
                 _rebusKeys = new int[_rowCount, _colCount];
 
@@ -314,11 +318,11 @@ namespace AcrossLiteToText
                 {
                     for (int c = 0; c < _colCount; c++)
                     {
-                        int nSubNumber = b[i++];
+                        int rebusKey = b[i++];
 
-                        _rebusKeys[r, c] = nSubNumber;
+                        _rebusKeys[r, c] = rebusKey;
 
-                        if (nSubNumber > 0)
+                        if (rebusKey > 0)
                             bFound = true;
                     }
                 }
@@ -351,33 +355,38 @@ namespace AcrossLiteToText
         /// <returns></returns>
         private static Dictionary<int, string> CrackSubstring(string str)
         {
-            Dictionary<int, string> subKeyVal = new Dictionary<int, string>();
+            Dictionary<int, string> rebusDict = new Dictionary<int, string>();
 
             string[] rawParts = str.Trim().Split(';');
 
             // Key is number before colon plus offset (1)
 
-            int nNumParts = rawParts.Length - 1;    // ignore trailing ';' string
+            int nNumParts = rawParts.Length - 1;    // ignore part with trailing ';'
 
             for (int i = 0; i < nNumParts; i++)
             {
-                string subInfo = rawParts[i];
-                string[] subInfoParts = subInfo.Split(':');
-                int nKey = Convert.ToInt32(subInfoParts[0]);
-                subKeyVal.Add(nKey + 1, subInfoParts[1]);
+                string rebusData = rawParts[i];
+                string[] rebusParts = rebusData.Split(':');
+                int nKey = Convert.ToInt32(rebusParts[0]);
+                rebusDict.Add(nKey + 1, rebusParts[1]);
             }
 
-            return subKeyVal;
+            return rebusDict;
         }
 
 
+        /// <summary>
+        /// Return the text version of this puzzle data as a list of strings,
+        /// one textfile line per string.
+        /// </summary>
+        /// <returns></returns>
         private IEnumerable<string> TextVersion()
         {
             Dictionary<string, int> rebusDict = new Dictionary<string, int>();              // for standard rebus
             Dictionary<string, char> circleAndRebusDict = new Dictionary<string, char>();   // for rebus AND circle
             List<string> circleAndRebusList = new List<string>();
 
-            int key = 0;                    // standard rebus uses numbers
+            int rebusNumber = 0;            // standard rebus uses numbers
             char rebusCircleKey = 'z';      // start from the end to minimize conflict risk
 
             List<string> lines = new List<string>
@@ -431,9 +440,9 @@ namespace AcrossLiteToText
                         }
                         else
                         {
-                            rebusDict.Add(rebusData, key);
-                            line += RebusKey(key);
-                            key++;
+                            rebusDict.Add(rebusData, rebusNumber);
+                            line += RebusKey(rebusNumber);
+                            rebusNumber++;
                         }
                     }
                     else if (hasCircle)
@@ -465,7 +474,6 @@ namespace AcrossLiteToText
                 List<string> rebusDataList = rebusDict.Select(r => $"{RebusKey(r.Value)}:{r.Key}").ToList();
 
                 rebusDataList.Sort();
-
                 lines.AddRange(rebusDataList);
 
                 // Output rebus into for squares that also have circles.
