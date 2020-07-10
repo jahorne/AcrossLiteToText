@@ -71,6 +71,9 @@ namespace AcrossLiteToText
         }
 
 
+        /// <summary>
+        /// Usuage information if no input found
+        /// </summary>
         private static void DisplayUsage()
         {
             Console.WriteLine();
