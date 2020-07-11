@@ -12,6 +12,9 @@ namespace AcrossLiteToText
     /// Parse using: Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
     ///
     /// Generate file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding); 
+    /// 
+    /// There is some useful documentation on the Across Lite binary format here:
+    ///     https://code.google.com/archive/p/puz/wikis/FileFormat.wiki
     /// </summary>
 
     internal class Puzzle
@@ -404,7 +407,7 @@ namespace AcrossLiteToText
             // Output the grid
             // Usually this just means output rows in _grid, one per line.
             // Circled squares need to use lower-case letters.
-            // Rebus squares need to use numbers that identify text strings.
+            // Rebus squares use numbers that are keys in rebus dictionary.
             // Squares with both circles and rebus elements use lower-case letters
             // that are also rebus keys.
 
