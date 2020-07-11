@@ -67,16 +67,12 @@ namespace AcrossLiteToText
             const int rowsOffset = 0x2d;                // number of rows is in next byte
             const int gridOffset = 0x34;                // standard location to start parsing grid data in binary stream
 
-            // Reject locked puzzles unless they're Variety type
-
-            // BUG -- handle encrypted puzzles if answers are typed in
+            // Check if puzzle is locked.
+            // We'll proceed anyway, in case the puzzle is manually solved.
 
             IsLocked = b[0x32] != 0 || b[0x33] != 0;    // is Across Lite file encrypted?
 
-            if (IsLocked)
-                return;
-
-            // Looks like we have a good puzzle
+            // Grid dimensions
 
             _colCount = b[columnsOffset];           // number of columns
             _rowCount = b[rowsOffset];              // number of rows
@@ -101,14 +97,14 @@ namespace AcrossLiteToText
 
             int answerOffset = gridOffset + _gridSize;
             int nOff = answerOffset;
-            bool isManuallyFilled = false;  // assume didn't have to manually enter solution (fixing is necessary for old V1 rebus puzzles)
+            bool isManuallySolved = false;  // assume didn't have to manually enter solution (fixing is necessary for old V1 rebus puzzles)
 
             while (b[nOff] == 0x2E || b[nOff] == 0x3A) // go to first non-black square
                 nOff++;
 
-            if (b[nOff] != 0x2D)        // if it's not a space character
+            if (b[nOff] != 0x2D)            // if it's not a space character
             {
-                isManuallyFilled = true;
+                isManuallySolved = true;
                 i = answerOffset;
             }
 
@@ -178,9 +174,7 @@ namespace AcrossLiteToText
             {
                 for (int c = 0; c < _colCount; c++)
                 {
-                    int gridNum = gridNumbers[r, c];
-
-                    if (gridNum != 0)   // if there is a grid number here
+                    if (gridNumbers[r, c] != 0)         // if there is a grid number here...
                     {
                         // Look first for an across clue
 
@@ -206,7 +200,7 @@ namespace AcrossLiteToText
             // and they also fill the relevant private property variables.
 
             _hasCircles = ParseCircles(b, i);
-            _isRebus = ParseRebus(isManuallyFilled ? "RUSR" : "GRBS", b, i);
+            _isRebus = ParseRebus(isManuallySolved, b, i);
 
             IsValid = true;
 
@@ -286,15 +280,18 @@ namespace AcrossLiteToText
 
         /// <summary>
         /// Fill _rebusKeys with key for each rebus entry found.
-        /// Convert rebus details into dictionary. 
+        /// Convert rebus details into dictionary.
+        /// The standard rebus data indicator is GRBS but RUSR is used if
+        /// the puzzle has been manually solved, perhaps because it is locked.
         /// </summary>
-        /// <param name="marker">Use marker "GRBS" for unlocked rebus puzzle, or "RUSR" for manually solved puzzles.</param>
+        /// <param name="isManuallySolved">True if manually solved locked puzzle</param>
         /// <param name="b">binary array to parse</param>
         /// <param name="i">offset into b to start searching</param>
         /// <returns>true if at least one rebus entry found</returns>
-        private bool ParseRebus(string marker, IReadOnlyList<byte> b, int i)
+        private bool ParseRebus(bool isManuallySolved, IReadOnlyList<byte> b, int i)
         {
-            bool bFound = false;    // assume not found
+            string marker = isManuallySolved ? "RUSR" : "GRBS";
+            bool bFound = false;
 
             while (i < b.Count - _gridSize)
             {
