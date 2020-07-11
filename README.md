@@ -1,4 +1,4 @@
-# AcrossLiteToText
+# Crossword: Across Lite .puz to text file converter
 
 This .Net Core console application converts one or more Across Lite .puz files into their text file equivalents.
 
