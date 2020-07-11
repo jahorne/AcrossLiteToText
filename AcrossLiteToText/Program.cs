@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Web;
 
 namespace AcrossLiteToText
 {
@@ -67,7 +68,15 @@ namespace AcrossLiteToText
 
             string sTextFileName = file.FullName.Replace(".puz", ".txt");
             File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
+
+            Console.WriteLine("");
+            Console.WriteLine("========");
             Console.WriteLine($"{sTextFileName} created");
+            Console.WriteLine("========");
+            Console.WriteLine("");
+
+            foreach (string line in puz.Text)
+                Console.WriteLine(line);
         }
 
 
