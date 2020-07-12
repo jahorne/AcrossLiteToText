@@ -59,7 +59,14 @@ namespace AcrossLiteToText
         private readonly bool _isRebus;         // does this puzzle have any rebus entries?
         private int[,] _rebusKeys;              // 0 means no rebus in this square, otherwise it's the dictionary key
 
-        private Dictionary<int, string> _rebusDict = new Dictionary<int, string>();
+        private Dictionary<int, string> _rebusLookup = new Dictionary<int, string>();
+
+        /// <summary>
+        /// Given a numeric value, return a char that can be used to identify a rebus square.
+        /// 0 to 9 first, then alphabetically from a.
+        /// </summary>
+        /// <param name="nValue"></param>
+        /// <returns></returns>
         private static char RebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
 
 
@@ -346,7 +353,7 @@ namespace AcrossLiteToText
                     while (b[n] != 0)
                         sb.Append((char)b[n++]);
 
-                    _rebusDict = CrackRebusSubstitutionString(sb.ToString());
+                    _rebusLookup = CrackRebusSubstitutionString(sb.ToString());
                 }
             }
 
@@ -363,7 +370,7 @@ namespace AcrossLiteToText
         /// <returns></returns>
         private static Dictionary<int, string> CrackRebusSubstitutionString(string str)
         {
-            Dictionary<int, string> rebusDict = new Dictionary<int, string>();
+            Dictionary<int, string> dict = new Dictionary<int, string>();
 
             string[] rawParts = str.Trim().Split(';');
 
@@ -376,10 +383,10 @@ namespace AcrossLiteToText
                 string rebusData = rawParts[i];
                 string[] rebusParts = rebusData.Split(':');
                 int nKey = Convert.ToInt32(rebusParts[0]);
-                rebusDict.Add(nKey + 1, rebusParts[1]);
+                dict.Add(nKey + 1, rebusParts[1]);
             }
 
-            return rebusDict;
+            return dict;
         }
 
 
@@ -389,8 +396,7 @@ namespace AcrossLiteToText
         /// <returns></returns>
         private IEnumerable<string> TextVersion()
         {
-            Dictionary<string, int> rebusDict = new Dictionary<string, int>();              // for standard rebus
-            Dictionary<string, char> circleAndRebusDict = new Dictionary<string, char>();   // for rebus AND circle
+            Dictionary<string, char> rebusDict = new Dictionary<string, char>();    // rebus keys and associated strings
 
             int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
             char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
@@ -429,34 +435,37 @@ namespace AcrossLiteToText
 
                     if (hasRebus && hasCircle)
                     {
-                        string rebusData = $"{_rebusDict[_rebusKeys[r, c]]}:{_rebusDict[_rebusKeys[r, c]][0]}";
+                        string rebusData = $"{_rebusLookup[_rebusKeys[r, c]]}:{_rebusLookup[_rebusKeys[r, c]][0]}";
 
                         // If we've seen this data string before, just output its associated character.
                         // Otherwise, generate new dictionary and list elements.
 
-                        if (circleAndRebusDict.TryGetValue(rebusData, out char ch))
+                        // Bug combine these
+
+                        if (rebusDict.TryGetValue(rebusData, out char ch))
                         {
                             line += ch;
                         }
                         else
                         {
                             line += rebusCircleKey;
-                            circleAndRebusDict.Add(rebusData, rebusCircleKey);
+                            rebusDict.Add(rebusData, rebusCircleKey);
                             rebusCircleKey--;
                         }
                     }
                     else if (hasRebus)
                     {
-                        string rebusData = $"{_rebusDict[_rebusKeys[r, c]]}:{_grid[r, c]}";
+                        string rebusData = $"{_rebusLookup[_rebusKeys[r, c]]}:{_grid[r, c]}";
 
-                        if (rebusDict.TryGetValue(rebusData, out int n))
+                        if (rebusDict.TryGetValue(rebusData, out char ch))
                         {
-                            line += RebusKey(n);
+                            line += ch;
                         }
                         else
                         {
-                            rebusDict.Add(rebusData, rebusNumber);
-                            line += RebusKey(rebusNumber);
+                            char key = RebusKey(rebusNumber);
+                            rebusDict.Add(rebusData, key);
+                            line += key;
                             rebusNumber++;
                         }
                     }
@@ -484,15 +493,11 @@ namespace AcrossLiteToText
                 if (_hasCircles)
                     lines.Add("MARK;");
 
-                // Rebus strings are added to a list so they can be sorted, just to look prettier.
+                // Sort rebus strings so they look pretty, and add them to lines
 
-                List<string> rebusDataList = rebusDict.Select(r => $"{RebusKey(r.Value)}:{r.Key}").ToList();
+                List<string> rebusDataList = rebusDict.Select(r => $"{r.Value}:{r.Key}").ToList();
                 rebusDataList.Sort();
                 lines.AddRange(rebusDataList);
-
-                // Output rebus into for squares that also have circles.
-
-                lines.AddRange(circleAndRebusDict.Select(r => $"{r.Value}:{r.Key}"));
             }
 
             // Clues
