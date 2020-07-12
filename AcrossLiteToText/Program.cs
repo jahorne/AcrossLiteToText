@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace AcrossLiteToText
@@ -7,40 +8,49 @@ namespace AcrossLiteToText
     {
         static void Main(string[] args)
         {
-            int count = 0;
+            string from, toFolder;
+            List<string> fileNames = new List<string>();
 
-            // Look for command line parameter
-
-            args = new string[5];   // bug bugbug remove !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-            args[0] = @"C:\Users\jimh\Desktop\";
-
-
-            if (args.Length > 0)
+            if (args.Length == 0)
             {
-                if (File.Exists(args[0]))                           // single file
-                {
-                    FileInfo file = new FileInfo(args[0]);
-                    OutputTextfile(file);
-                    count++;
-                }
-                else if (Directory.Exists(args[0]))                 // folder
-                {
-                    DirectoryInfo dir = new DirectoryInfo(args[0]);
-
-                    foreach (FileInfo file in dir.GetFiles("*.puz"))
-                    {
-                        OutputTextfile(file);
-                        count++;
-                    }
-                }
-
-                if (count == 0)
-                    Console.WriteLine("No Across Lite files found");
+                DisplayUsage();
+                Console.Write("Enter filename or folder for input .puz files: ");
+                from = Console.ReadLine();
             }
             else
             {
-                DisplayUsage();
+                from = args[0];
+
+                if (args.Length > 1)
+                    toFolder = args[1];         // BUG output folder not working yet
+            }
+
+            if (File.Exists(from))                              // single file
+            {
+                FileInfo file = new FileInfo(from);
+                OutputTextfile(file);
+                fileNames.Add(file.FullName);
+            }
+            else if (Directory.Exists(from))                    // folder
+            {
+                DirectoryInfo dir = new DirectoryInfo(from);
+
+                foreach (FileInfo file in dir.GetFiles("*.puz"))
+                {
+                    OutputTextfile(file);
+                    fileNames.Add(file.FullName);
+                }
+            }
+
+            if (fileNames.Count == 0)
+                Console.WriteLine("No Across Lite files found");
+            else
+            {
+                Console.WriteLine("");
+                Console.WriteLine($"Number of files converted: {fileNames.Count}:");
+
+                foreach (string file in fileNames)
+                    Console.WriteLine($"\t{file}");
             }
         }
 
@@ -57,13 +67,12 @@ namespace AcrossLiteToText
 
             if (!puz.IsValid)
             {
-                if (puz.IsLocked)
-                    Console.WriteLine("ERROR: " + file.Name + " appears to be locked");
-                else
-                    Console.WriteLine("ERROR: " + file.Name + " appears to be an invalid Across Lite file");
-
+                Console.WriteLine($"ERROR: {file.Name} appears to be an invalid Across Lite file");
                 return;
             }
+
+            if (puz.IsLocked)
+                Console.WriteLine($"WARNING: {file.Name} appears to be locked");
 
             // Write out the text file
 
@@ -78,7 +87,7 @@ namespace AcrossLiteToText
             Console.WriteLine("");
 
             Console.Write(string.Join(Environment.NewLine, puz.Text));
-            Console.Write(Environment.NewLine);
+            Console.WriteLine(Environment.NewLine);
         }
 
 
@@ -91,9 +100,10 @@ namespace AcrossLiteToText
             Console.WriteLine("AcrossLiteToText converts Across Lite .puz files to text files.");
             Console.WriteLine("Specify a file or folder. Examples:");
             Console.WriteLine();
-            Console.WriteLine("\tPuz2Txt filename.puz");
-            Console.WriteLine("\tPuz2Txt foldername        (convert all .puz files in folder)");
-            Console.WriteLine("\tPuz2Txt .                 (use . for current folder)");
+            Console.WriteLine("AcrossLiteToText filename.puz    (convert single file)");
+            Console.WriteLine("AcrossLiteToText foldername      (convert all .puz files in folder)");
+            Console.WriteLine("AcrossLiteToText .               (use . for current folder)");
+            Console.WriteLine("AcrossLiteToText in out          (specify input and output folders");
             Console.WriteLine();
             Console.WriteLine("Note: some valid puzzle files cannot be represented as text.");
             Console.WriteLine();
