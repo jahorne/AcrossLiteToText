@@ -13,8 +13,12 @@ namespace AcrossLiteToText
     ///
     /// Generate file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding); 
     /// 
+    /// 
     /// There is some useful documentation on the Across Lite binary format here:
     ///     https://code.google.com/archive/p/puz/wikis/FileFormat.wiki
+    ///     
+    /// I can't vouch for it's accuracy. Logic below was derived from direct examination
+    /// of the binary files.
     /// </summary>
 
     internal class Puzzle
@@ -165,7 +169,7 @@ namespace AcrossLiteToText
 
             _title = NextString();
             _author = NextString();
-            _copyright = NextString();  // or NextString().Replace("©", "").Trim();
+            _copyright = NextString();  // or perhaps NextString().Replace("©", "").Trim();
 
             // Figure out clues. They are ordered in Across Lite in an odd way.
             // Look for the next numbered cell. If there is an across clue starting there,

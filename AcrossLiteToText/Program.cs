@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Web;
 
 namespace AcrossLiteToText
 {
@@ -66,17 +65,20 @@ namespace AcrossLiteToText
                 return;
             }
 
+            // Write out the text file
+
             string sTextFileName = file.FullName.Replace(".puz", ".txt");
             File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
 
+            // Copy lines to the console as well
+
             Console.WriteLine("");
-            Console.WriteLine("========");
-            Console.WriteLine($"{sTextFileName} created");
-            Console.WriteLine("========");
+            Console.WriteLine("");
+            Console.WriteLine($"==========> {sTextFileName} created");
             Console.WriteLine("");
 
-            foreach (string line in puz.Text)
-                Console.WriteLine(line);
+            Console.Write(string.Join(Environment.NewLine, puz.Text));
+            Console.Write(Environment.NewLine);
         }
 
 
@@ -95,7 +97,7 @@ namespace AcrossLiteToText
             Console.WriteLine();
             Console.WriteLine("Note: some valid puzzle files cannot be represented as text.");
             Console.WriteLine();
-            Console.WriteLine("(c) 2020 by Jim Horne. All rights reserved.");
+            Console.WriteLine("(c) 2020 by Jim Horne.");
             Console.WriteLine();
         }
     }
