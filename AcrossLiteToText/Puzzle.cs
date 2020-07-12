@@ -92,7 +92,7 @@ namespace AcrossLiteToText
             int[,] gridNumbers = new int[_rowCount, _colCount];
 
             // i indexes through byte array b[] starting at standard offset location.
-            // It is updated as each new datapoint is extracted.
+            // It is updated as each new data point is extracted.
 
             int i = gridOffset;
 
@@ -391,7 +391,6 @@ namespace AcrossLiteToText
         {
             Dictionary<string, int> rebusDict = new Dictionary<string, int>();              // for standard rebus
             Dictionary<string, char> circleAndRebusDict = new Dictionary<string, char>();   // for rebus AND circle
-            List<string> circleAndRebusList = new List<string>();
 
             int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
             char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
@@ -443,7 +442,6 @@ namespace AcrossLiteToText
                         {
                             line += rebusCircleKey;
                             circleAndRebusDict.Add(rebusData, rebusCircleKey);
-                            circleAndRebusList.Add($"{rebusCircleKey}:{_rebusDict[_rebusKeys[r, c]]}:{_rebusDict[_rebusKeys[r, c]][0]}");
                             rebusCircleKey--;
                         }
                     }
@@ -494,7 +492,7 @@ namespace AcrossLiteToText
 
                 // Output rebus into for squares that also have circles.
 
-                lines.AddRange(circleAndRebusList);
+                lines.AddRange(circleAndRebusDict.Select(r => $"{r.Value}:{r.Key}"));
             }
 
             // Clues
