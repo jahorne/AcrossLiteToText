@@ -6,25 +6,26 @@ using System.Text;
 namespace AcrossLiteToText
 {
     /// <summary>
-    /// This class parses a binary .puz (Across Lite) file, and provides a
-    /// method to output a text version of that crossword.
+    /// The constructor here takes a byte array from a binary Acros Lite .puz file.
+    /// A public Text property returns a list of strings that can be directly
+    /// written to a text file.
     ///
     /// Parse using: Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
     ///
-    /// Generate file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding); 
+    /// Generate text file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
     /// 
     /// 
     /// There is some useful documentation on the Across Lite binary format here:
     ///     https://code.google.com/archive/p/puz/wikis/FileFormat.wiki
     ///     
-    /// I can't vouch for it's accuracy. Logic below was derived from direct examination
+    /// I can't vouch for its accuracy. Logic below was derived from direct examination
     /// of the binary files.
     /// </summary>
 
     internal class Puzzle
     {
-        // Across Lite encodes non-ASCII characters in strings in ANSI,
-        // in particular, the version in codepage 1252, specified as ISO-8859-1.
+        // Across Lite encodes non-ASCII characters in strings in ANSI, in particular,
+        // the version of ANSI defined by codepage 1252, specified as ISO-8859-1.
         // Strings are read, and then must be written to text files, using this encoding.
 
         public readonly Encoding AnsiEncoding = Encoding.GetEncoding("ISO-8859-1");
@@ -100,7 +101,7 @@ namespace AcrossLiteToText
             // still encrypted puzzles.
             //
             // 0x2E means black square (block) and 0x2D is empty square.
-            // Note 0x2E is valid in both sections so find first non black square and check if it's a blank
+            // Note 0x2E is valid in both sections so find first non black square and check if it's a blank.
 
             int answerOffset = gridOffset + _gridSize;
             int nOff = answerOffset;
@@ -215,21 +216,24 @@ namespace AcrossLiteToText
 
 
             //
-            // NextString() is a local function so it has access to the byte array b and the index i.
+            // NextString() is a LOCAL function so it captures the byte array b and the index i.
             //
             
             string NextString()
             {
-                int nStart = i;     // remember starting location
+                int startingLocation = i;
 
                 // find string length by searching for terminating character '\0'
 
                 while (b[i] != 0)
                     i++;            
 
-                string str = AnsiEncoding.GetString(b, nStart, i - nStart).Trim();
+                string str = AnsiEncoding.GetString(b, startingLocation, i - startingLocation).Trim();
 
-                i++;                // move index past trailing '\0' so it's ready for the next NexString()
+                // Move index past trailing '\0' so it's ready for the next NexString()
+                // and return result.
+
+                i++;
                 return str;
             }
         }
@@ -239,40 +243,40 @@ namespace AcrossLiteToText
         /// Fill _hasCircle[r,c] array with true for each square that includes a circle, and false otherwise.
         /// </summary>
         /// <param name="b">binary array to parse</param>
-        /// <param name="i">offset in b to start searching</param>
+        /// <param name="n">offset in b to start searching</param>
         /// <returns>true if at least one circle was found</returns>
-        private bool ParseCircles(IReadOnlyList<byte> b, int i)
+        private bool ParseCircles(IReadOnlyList<byte> b, int n)
         {
             const string marker = "GEXT";   // marks the start of the circle data
             bool bFound = false;            // assume none found
 
             // Search for marker that indicates start of circle data
 
-            while (i < b.Count - _gridSize)
+            while (n < b.Count - _gridSize)
             {
-                if (b[i] == marker[0] && b[i + 1] == marker[1] && b[i + 2] == marker[2] && b[i + 3] == marker[3])
+                if (b[n] == marker[0] && b[n + 1] == marker[1] && b[n + 2] == marker[2] && b[n + 3] == marker[3])
                 {
-                    bFound = true; // need to check later
+                    bFound = true;  // need to check later
                     break;
                 }
 
-                i++;
+                n++;
             }
 
             if (bFound)             // if marker found (might be bogus)
             {
-                i += 8;             // offset from GEXT
+                n += 8;             // offset from GEXT
                 bFound = false;     // reset
 
                 _hasCircle = new bool[_rowCount, _colCount];        // create array to store circle data
 
                 for (int r = 0; r < _rowCount; r++)
                 {
-                    for (int c = 0; c < _colCount; c++, i++)
+                    for (int c = 0; c < _colCount; c++, n++)
                     {
                         // 0x80 means circle, 0xC0 means circle in diagramless
 
-                        if (b[i] == 0x80 || b[i] == 0xC0)
+                        if (b[n] == 0x80 || b[n] == 0xC0)
                         {
                             _hasCircle[r, c] = true;
                             bFound = true;
@@ -291,29 +295,29 @@ namespace AcrossLiteToText
         /// The standard rebus data indicator is GRBS but RUSR is used if
         /// the puzzle has been manually solved, perhaps because it is locked.
         /// </summary>
-        /// <param name="isManuallySolved">True if manually solved locked puzzle</param>
+        /// <param name="isManuallySolved">If true, look at user-entered solution</param>
         /// <param name="b">binary array to parse</param>
-        /// <param name="i">offset into b to start searching</param>
+        /// <param name="n">offset into b to start searching</param>
         /// <returns>true if at least one rebus entry found</returns>
-        private bool ParseRebus(bool isManuallySolved, IReadOnlyList<byte> b, int i)
+        private bool ParseRebus(bool isManuallySolved, IReadOnlyList<byte> b, int n)
         {
             string marker = isManuallySolved ? "RUSR" : "GRBS";
             bool bFound = false;
 
-            while (i < b.Count - _gridSize)
+            while (n < b.Count - _gridSize)
             {
-                if (b[i] == marker[0] && b[i + 1] == marker[1] && b[i + 2] == marker[2] && b[i + 3] == marker[3])
+                if (b[n] == marker[0] && b[n + 1] == marker[1] && b[n + 2] == marker[2] && b[n + 3] == marker[3])
                 {
                     bFound = true;  // need to check later
                     break;
                 }
 
-                i++;
+                n++;
             }
 
             if (bFound)             // if marker found (might be bogus)
             {
-                i += 8;             // offset from marker
+                n += 8;             // offset from marker
                 bFound = false;     // reset
 
                 _rebusKeys = new int[_rowCount, _colCount];
@@ -322,7 +326,7 @@ namespace AcrossLiteToText
                 {
                     for (int c = 0; c < _colCount; c++)
                     {
-                        int rebusKey = b[i++];
+                        int rebusKey = b[n++];
 
                         _rebusKeys[r, c] = rebusKey;
 
@@ -335,14 +339,14 @@ namespace AcrossLiteToText
 
                 if (bFound)
                 {
-                    i += 9;     // skip to start of substring table
+                    n += 9;     // skip to start of substring table
 
                     StringBuilder sb = new StringBuilder();
 
-                    while (b[i] != 0)
-                        sb.Append((char)b[i++]);
+                    while (b[n] != 0)
+                        sb.Append((char)b[n++]);
 
-                    _rebusDict = CrackSubstring(sb.ToString());
+                    _rebusDict = CrackRebusSubstitutionString(sb.ToString());
                 }
             }
 
@@ -351,13 +355,13 @@ namespace AcrossLiteToText
 
 
         /// <summary>
-        /// CrackSubstring takes a string which looks like " 1:FIRST; 2:SECOND; 3:THIRD;"
+        /// This function takes a string which looks like " 1:FIRST; 2:SECOND; 3:THIRD;"
         /// or possibly "19:SECOND;26FIRST;33THIRD;35HOME;" and creates a dictionary where the
-        /// string part is keyed to the number plus one (since that's how Across Lite binary format works.)
+        /// string part is keyed to the number plus one (since that's what Across Lite binary uses.)
         /// </summary>
         /// <param name="str"></param>
         /// <returns></returns>
-        private static Dictionary<int, string> CrackSubstring(string str)
+        private static Dictionary<int, string> CrackRebusSubstitutionString(string str)
         {
             Dictionary<int, string> rebusDict = new Dictionary<int, string>();
 
@@ -365,9 +369,9 @@ namespace AcrossLiteToText
 
             // Key is number before colon plus offset (1)
 
-            int nNumParts = rawParts.Length - 1;    // ignore part with trailing ';'
+            int partsCount = rawParts.Length - 1;       // ignore part with trailing ';'
 
-            for (int i = 0; i < nNumParts; i++)
+            for (int i = 0; i < partsCount; i++)
             {
                 string rebusData = rawParts[i];
                 string[] rebusParts = rebusData.Split(':');
