@@ -8,8 +8,10 @@ namespace AcrossLiteToText
     {
         static void Main(string[] args)
         {
-            string from, toFolder;
-            List<string> fileNames = new List<string>();
+            string from;                // filename or directory of .puz file(s)
+            string toFolder = null;     // directly to place resulting .txt file(s)
+
+            List<string> fileNames = new List<string>();    // list of files converted
 
             if (args.Length == 0)
             {
@@ -22,23 +24,48 @@ namespace AcrossLiteToText
                 from = args[0];
 
                 if (args.Length > 1)
-                    toFolder = args[1];         // BUG output folder not working yet
+                    toFolder = args[1];
+            }
+
+            if (!string.IsNullOrEmpty(from) && string.IsNullOrEmpty(toFolder))
+            {
+                Console.Write("Enter folder to write .txt files: ");
+                toFolder = Console.ReadLine();
             }
 
             if (File.Exists(from))                              // single file
             {
                 FileInfo file = new FileInfo(from);
-                OutputTextfile(file);
+                OutputTextfile(file, toFolder);
                 fileNames.Add(file.FullName);
             }
             else if (Directory.Exists(from))                    // folder
             {
                 DirectoryInfo dir = new DirectoryInfo(from);
 
+                if (string.IsNullOrEmpty(toFolder))
+                    toFolder = from;
+
                 foreach (FileInfo file in dir.GetFiles("*.puz"))
                 {
-                    OutputTextfile(file);
+                    OutputTextfile(file, toFolder);
                     fileNames.Add(file.FullName);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(toFolder) && !Directory.Exists(toFolder))
+            {
+                if (!Directory.Exists(toFolder))
+                {
+                    try
+                    { 
+                        Directory.CreateDirectory(toFolder);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"ERROR: Cannot create folder {toFolder} : {ex.Message}");
+                        return;
+                    }
                 }
             }
 
@@ -55,7 +82,7 @@ namespace AcrossLiteToText
         }
 
 
-        static void OutputTextfile(FileInfo file)
+        static void OutputTextfile(FileInfo file, string toFolder)
         {
             if (!file.Name.EndsWith(".puz"))
             {
@@ -76,7 +103,7 @@ namespace AcrossLiteToText
 
             // Write out the text file
 
-            string sTextFileName = file.FullName.Replace(".puz", ".txt");
+            string sTextFileName = @$"{toFolder}\{file.Name.Replace(".puz", ".txt")}";
             File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
 
             // Copy lines to the console as well
