@@ -6,9 +6,14 @@ using System.Text;
 namespace AcrossLiteToText
 {
     /// <summary>
-    /// The constructor here takes a byte array from a binary Acros Lite .puz file.
+    /// PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.
+    ///
+    /// You need permission from the rights holders for most public and for all commercial uses.
+    ///
+    /// 
+    /// The constructor here takes a byte array from a binary Across Lite .puz file.
     /// A public Text property returns a list of strings that can be directly
-    /// written to a text file.
+    /// written to a text file using the appropriate encoding.
     ///
     /// Parse using: Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
     ///
@@ -24,7 +29,7 @@ namespace AcrossLiteToText
 
     internal class Puzzle
     {
-        // Across Lite encodes non-ASCII characters in strings in ANSI, in particular,
+        // Across Lite encodes non-ASCII characters in ANSI, in particular,
         // the version of ANSI defined by codepage 1252, specified as ISO-8859-1.
         // Strings are read, and then must be written to text files, using this encoding.
 
@@ -112,7 +117,7 @@ namespace AcrossLiteToText
 
             int answerOffset = gridOffset + _gridSize;
             int nOff = answerOffset;
-            bool isManuallySolved = false;  // assume didn't have to manually enter solution (fixing is necessary for old V1 rebus puzzles)
+            bool isManuallySolved = false;  // assume didn't have to manually enter solution
 
             while (b[nOff] == 0x2E || b[nOff] == 0x3A) // go to first non-black square
                 nOff++;
@@ -177,7 +182,7 @@ namespace AcrossLiteToText
 
             _title = NextString();
             _author = NextString();
-            _copyright = NextString();  // or perhaps NextString().Replace("©", "").Trim();
+            _copyright = NextString();      // or perhaps NextString().Replace("©", "").Trim();
 
             // Figure out clues. They are ordered in Across Lite in an odd way.
             // Look for the next numbered cell. If there is an across clue starting there,
@@ -247,7 +252,7 @@ namespace AcrossLiteToText
 
 
         /// <summary>
-        /// Fill _hasCircle[r,c] array with true for each square that includes a circle, and false otherwise.
+        /// Fill _hasCircle[r, c] array with true for each square that includes a circle.
         /// </summary>
         /// <param name="b">binary array to parse</param>
         /// <param name="n">offset in b to start searching</param>
@@ -297,7 +302,7 @@ namespace AcrossLiteToText
 
 
         /// <summary>
-        /// Fill _rebusKeys with key for each rebus entry found.
+        /// Fill _rebusKeys[r, c] array with key for each rebus entry found.
         /// Convert rebus details into dictionary.
         /// The standard rebus data indicator is GRBS but RUSR is used if
         /// the puzzle has been manually solved, perhaps because it is locked.
@@ -435,12 +440,12 @@ namespace AcrossLiteToText
 
                     if (hasRebus && hasCircle)
                     {
+                        // Use the first character of the looked-up string as the single-key shortcut
+
                         string rebusData = $"{_rebusLookup[_rebusKeys[r, c]]}:{_rebusLookup[_rebusKeys[r, c]][0]}";
 
                         // If we've seen this data string before, just output its associated character.
                         // Otherwise, generate new dictionary and list elements.
-
-                        // Bug combine these
 
                         if (rebusDict.TryGetValue(rebusData, out char ch))
                         {
@@ -455,6 +460,8 @@ namespace AcrossLiteToText
                     }
                     else if (hasRebus)
                     {
+                        // Use the actual grid letter as the single-key shortcut
+
                         string rebusData = $"{_rebusLookup[_rebusKeys[r, c]]}:{_grid[r, c]}";
 
                         if (rebusDict.TryGetValue(rebusData, out char ch))
@@ -464,8 +471,8 @@ namespace AcrossLiteToText
                         else
                         {
                             char key = RebusKey(rebusNumber);
-                            rebusDict.Add(rebusData, key);
                             line += key;
+                            rebusDict.Add(rebusData, key);
                             rebusNumber++;
                         }
                     }
