@@ -2,13 +2,15 @@
 
 This .Net Core console application converts one or more Across Lite .puz files into their text file equivalents.
 
-Compile it to run on Windows, Macs, or Unix computers. (Separate installation of the [.Net Core runtime](https://dotnet.microsoft.com/download/dotnet-core/3.1 ".Net Core runtime") may be required.)
+Compile it to run on Windows, Macs, or Unix computers.
 
-You can edit this project here on the web, or by using [Visual Studio or Visual Studio Code](https://visualstudio.microsoft.com/).
+You can edit this project here on the web, or with [Visual Studio or Visual Studio Code](https://visualstudio.microsoft.com/), or using your favorite editor. I recommend the free version of Visual Studio.
 
-The code here includes a simplified version of core functionality from [XWord Info](https://www.xwordinfo.com "XWord Info") to parse the binary file and convert it to text. You now have a great head start if you want to research crossword data, create your own solving app, *or even build your own XWord Info competitor!*
+The code here includes a streamlined version of core functionality from [XWord Info](https://www.xwordinfo.com "XWord Info"). Now that you can parse Across Lite files, you have a great head start if you want to research crossword data, create your own solving app, *or even build your own XWord Info competitor!*
 
-Anyone interested in contributing to this project is welcome to submit a pull request. For more information, [read the wiki](https://github.com/jahorne/AcrossLiteToText/wiki "read the wiki"), or contact me via the email link on the [XWord Info](https://www.xwordinfo.com "XWord Info") home page.
+Interested in contributing? Write some code and submit a pull request.
+
+For more information, [read the wiki](https://github.com/jahorne/AcrossLiteToText/wiki "read the wiki"), or contact me via the email link on the [XWord Info](https://www.xwordinfo.com "XWord Info") home page.
 
 More XWord Info core functionality will be moved to Open Source over time.
 
