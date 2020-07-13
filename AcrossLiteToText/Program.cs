@@ -6,8 +6,10 @@ namespace AcrossLiteToText
 {
     /// <summary>
     /// This file contains the Main entry point for the AcrossLiteToText console app.
-    /// It's main purpose is to demonstrate Across Lite binary file parsing, and
-    /// text file generation, in the associated Puzzle class.
+    /// It's main purpose is to demonstrate the Across Lite binary file parsing, and
+    /// text file generation capability, of the associated Puzzle class.
+    ///
+    /// Usage:  AcrossLiteToText inputFileOrFolder outputFolder (both parameters are optional)
     /// </summary>
     
     internal static class Program
@@ -18,6 +20,8 @@ namespace AcrossLiteToText
             string toFolder = null;     // directly to place resulting .txt file(s)
 
             List<string> fileNames = new List<string>();    // list of files converted
+
+            // Get the names of the input file or folder, and the output folder.
 
             if (args.Length == 0)
             {
@@ -53,23 +57,28 @@ namespace AcrossLiteToText
                     toFolder = index == -1 ? "." : from.Substring(0, index);
                 }
 
-                FileInfo file = new FileInfo(from);
-                OutputTextFileFromPuzFile(file, toFolder);
-                fileNames.Add(file.FullName);
+                FileInfo puzFile = new FileInfo(from);
+                OutputTextFileFromPuzFile(puzFile, toFolder);
+                fileNames.Add(puzFile.FullName);
             }
             else if (Directory.Exists(from))                    // folder
             {
+                // If toFolder is specified, use that.
+                // Otherwise, use the input folder as output too.
+
                 DirectoryInfo dir = new DirectoryInfo(from);
 
                 if (string.IsNullOrEmpty(toFolder))
                     toFolder = from;
 
-                foreach (FileInfo file in dir.GetFiles("*.puz"))
+                foreach (FileInfo puzFile in dir.GetFiles("*.puz"))
                 {
-                    OutputTextFileFromPuzFile(file, toFolder);
-                    fileNames.Add(file.FullName);
+                    OutputTextFileFromPuzFile(puzFile, toFolder);
+                    fileNames.Add(puzFile.FullName);
                 }
             }
+
+            // Make sure toFolder directory exists
 
             if (!string.IsNullOrEmpty(toFolder) && !Directory.Exists(toFolder))
             {
@@ -100,7 +109,12 @@ namespace AcrossLiteToText
         }
 
 
-        static void OutputTextFileFromPuzFile(FileInfo puzFile, string toFolder)
+        /// <summary>
+        /// Create a Puzzle object from the puzFile, and write out its equivalent text file.
+        /// </summary>
+        /// <param name="puzFile"></param>
+        /// <param name="toFolder"></param>
+        private static void OutputTextFileFromPuzFile(FileInfo puzFile, string toFolder)
         {
             if (!puzFile.Name.EndsWith(".puz"))
             {
