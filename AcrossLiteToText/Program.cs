@@ -4,9 +4,15 @@ using System.IO;
 
 namespace AcrossLiteToText
 {
-    class Program
+    /// <summary>
+    /// This file contains the Main entry point for the AcrossLiteToText console app.
+    /// It's main purpose is to demonstrate Across Lite binary file parsing, and
+    /// text file generation, in the associated Puzzle class.
+    /// </summary>
+    
+    internal static class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             string from;                // filename or directory of .puz file(s)
             string toFolder = null;     // directly to place resulting .txt file(s)
@@ -33,10 +39,22 @@ namespace AcrossLiteToText
                 toFolder = Console.ReadLine();
             }
 
+            if (string.IsNullOrEmpty(from))
+                return;
+
             if (File.Exists(from))                              // single file
             {
+                if (string.IsNullOrEmpty(toFolder))
+                {
+                    // If toFolder hasn't been set, try to make it the same as the
+                    // folder of the from file.
+
+                    int index = from.LastIndexOf('\\');
+                    toFolder = index == -1 ? "." : from.Substring(0, index);
+                }
+
                 FileInfo file = new FileInfo(from);
-                OutputTextfile(file, toFolder);
+                OutputTextFileFromPuzFile(file, toFolder);
                 fileNames.Add(file.FullName);
             }
             else if (Directory.Exists(from))                    // folder
@@ -48,7 +66,7 @@ namespace AcrossLiteToText
 
                 foreach (FileInfo file in dir.GetFiles("*.puz"))
                 {
-                    OutputTextfile(file, toFolder);
+                    OutputTextFileFromPuzFile(file, toFolder);
                     fileNames.Add(file.FullName);
                 }
             }
@@ -82,35 +100,35 @@ namespace AcrossLiteToText
         }
 
 
-        static void OutputTextfile(FileInfo file, string toFolder)
+        static void OutputTextFileFromPuzFile(FileInfo puzFile, string toFolder)
         {
-            if (!file.Name.EndsWith(".puz"))
+            if (!puzFile.Name.EndsWith(".puz"))
             {
-                Console.WriteLine($"ERROR: {file.Name} is not a correctly named Across Lite puzzle file");
+                Console.WriteLine($"ERROR: {puzFile.Name} is not a correctly named Across Lite puzzle file");
                 return;
             }
 
-            Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
+            Puzzle puz = new Puzzle(File.ReadAllBytes(puzFile.FullName));
 
             if (!puz.IsValid)
             {
-                Console.WriteLine($"ERROR: {file.Name} appears to be an invalid Across Lite file");
+                Console.WriteLine($"ERROR: {puzFile.Name} appears to be an invalid Across Lite file");
                 return;
             }
 
             if (puz.IsLocked)
-                Console.WriteLine($"WARNING: {file.Name} appears to be locked");
+                Console.WriteLine($"WARNING: {puzFile.Name} appears to be locked");
 
             // Write out the text file
 
-            string sTextFileName = @$"{toFolder}\{file.Name.Replace(".puz", ".txt")}";
-            File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
+            string textFileName = @$"{toFolder}\{puzFile.Name.Replace(".puz", ".txt")}";
+            File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
 
             // Copy lines to the console as well
 
             Console.WriteLine("");
             Console.WriteLine("");
-            Console.WriteLine($"==========> {sTextFileName} created");
+            Console.WriteLine($"==========> {textFileName} created");
             Console.WriteLine("");
 
             Console.Write(string.Join(Environment.NewLine, puz.Text));
@@ -119,7 +137,7 @@ namespace AcrossLiteToText
 
 
         /// <summary>
-        /// Usuage information if no input found
+        /// Usage information if no input found
         /// </summary>
         private static void DisplayUsage()
         {
