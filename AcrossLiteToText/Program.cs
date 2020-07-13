@@ -166,6 +166,9 @@ namespace AcrossLiteToText
             Console.WriteLine();
             Console.WriteLine("Note: some valid puzzle files cannot be represented as text.");
             Console.WriteLine();
+            Console.WriteLine("PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.");
+            Console.WriteLine("You need permission from the rights holders for most public and for all commercial uses.");
+            Console.WriteLine();
             Console.WriteLine("(c) 2020 by Jim Horne.");
             Console.WriteLine();
         }
