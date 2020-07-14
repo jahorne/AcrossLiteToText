@@ -9,7 +9,7 @@ namespace AcrossLiteToText
     /// It's main purpose is to demonstrate the Across Lite binary file parsing, and
     /// text file generation capability, of the associated Puzzle class.
     ///
-    /// Usage:  AcrossLiteToText inputFileOrFolder outputFolder (both parameters are optional)
+    /// Usage:  AcrossLiteToText inputFileOrFolder outputFolder (parameters optional)
     /// </summary>
     
     internal static class Program
@@ -17,16 +17,16 @@ namespace AcrossLiteToText
         private static void Main(string[] args)
         {
             string from;                // filename or directory of .puz file(s)
-            string toFolder = null;     // directly to place resulting .txt file(s)
+            string toFolder = null;     // directory to create converted .txt file(s)
 
-            List<string> fileNames = new List<string>();    // list of files converted
+            List<string> fileNames = new List<string>();    // list of files to convert
 
             // Get the names of the input file or folder, and the output folder.
 
             if (args.Length == 0)
             {
                 DisplayUsage();
-                Console.Write("Enter filename or folder for input .puz files: ");
+                Console.Write("Enter filename or folder for .puz files to convert: ");
                 from = Console.ReadLine();
             }
             else
@@ -37,16 +37,22 @@ namespace AcrossLiteToText
                     toFolder = args[1];
             }
 
-            if (!string.IsNullOrEmpty(from) && string.IsNullOrEmpty(toFolder))
-            {
-                Console.Write("Enter folder to write .txt files: ");
-                toFolder = Console.ReadLine();
-            }
+            // If we didn't get a from file or folder, bail.
 
             if (string.IsNullOrEmpty(from))
                 return;
 
-            if (File.Exists(from))                              // single file
+            // If we didn't get a toFolder, ask for it.
+
+            if (string.IsNullOrWhiteSpace(toFolder))
+            {
+                Console.Write("Enter folder to write .txt files (or Enter for same folder): ");
+                toFolder = Console.ReadLine();
+            }
+
+            // See if from has specified a single file
+
+            if (File.Exists(from))
             {
                 if (string.IsNullOrEmpty(toFolder))
                 {
@@ -57,25 +63,36 @@ namespace AcrossLiteToText
                     toFolder = index == -1 ? "." : from.Substring(0, index);
                 }
 
+                // Save the filename to convert later
+
                 FileInfo puzFile = new FileInfo(from);
-                OutputTextFileFromPuzFile(puzFile, toFolder);
                 fileNames.Add(puzFile.FullName);
             }
-            else if (Directory.Exists(from))                    // folder
+
+            // If from wasn't a file, maybe it was a folder.
+
+            else if (Directory.Exists(from))
             {
                 // If toFolder is specified, use that.
                 // Otherwise, use the input folder as output too.
 
                 DirectoryInfo dir = new DirectoryInfo(from);
 
-                if (string.IsNullOrEmpty(toFolder))
+                if (string.IsNullOrWhiteSpace(toFolder))
                     toFolder = from;
 
+                // Save all the .puz files in the from folder to convert later.
+
                 foreach (FileInfo puzFile in dir.GetFiles("*.puz"))
-                {
-                    OutputTextFileFromPuzFile(puzFile, toFolder);
                     fileNames.Add(puzFile.FullName);
-                }
+            }
+
+            // Couldn't fine a file OR a folder, so bail
+
+            else
+            {
+                Console.WriteLine($"ERROR: could not find a file or folder named \"{from}\"");
+                return;
             }
 
             // Make sure toFolder directory exists
@@ -85,7 +102,7 @@ namespace AcrossLiteToText
                 if (!Directory.Exists(toFolder))
                 {
                     try
-                    { 
+                    {
                         Directory.CreateDirectory(toFolder);
                     }
                     catch (Exception ex)
@@ -96,15 +113,20 @@ namespace AcrossLiteToText
                 }
             }
 
+            // For each filename collected, create the text file
+            // and write the contents of each file to the console.
+
             if (fileNames.Count == 0)
+            {
                 Console.WriteLine("No Across Lite files found");
+            }
             else
             {
-                Console.WriteLine("");
-                Console.WriteLine($"Number of files converted: {fileNames.Count}:");
+                foreach (string fileName in fileNames)
+                    OutputTextFileFromPuzFile(fileName, toFolder);
 
-                foreach (string file in fileNames)
-                    Console.WriteLine($"\t{file}");
+                Console.WriteLine("");
+                Console.WriteLine($"Number of files converted: {fileNames.Count}");
             }
         }
 
@@ -112,10 +134,12 @@ namespace AcrossLiteToText
         /// <summary>
         /// Create a Puzzle object from the puzFile, and write out its equivalent text file.
         /// </summary>
-        /// <param name="puzFile"></param>
+        /// <param name="fileName"></param>
         /// <param name="toFolder"></param>
-        private static void OutputTextFileFromPuzFile(FileInfo puzFile, string toFolder)
+        private static void OutputTextFileFromPuzFile(string fileName, string toFolder)
         {
+            FileInfo puzFile = new FileInfo(fileName);
+
             if (!puzFile.Name.EndsWith(".puz"))
             {
                 Console.WriteLine($"ERROR: {puzFile.Name} is not a correctly named Across Lite puzzle file");
