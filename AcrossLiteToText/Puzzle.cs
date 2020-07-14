@@ -491,6 +491,9 @@ namespace AcrossLiteToText
                 lines.Add(line);
             }
 
+            // <REBUS> indicates circles or true rebus strings.
+            // MARK: means squares with lower-case letters should be circled.
+
             if (_hasCircles || _isRebus)
             {
                 lines.Add("<REBUS>");
@@ -498,11 +501,7 @@ namespace AcrossLiteToText
                 if (_hasCircles)
                     lines.Add("MARK;");
 
-                // Sort rebus strings so they look pretty, and add them to lines
-
-                List<string> rebusDataList = rebusDict.Select(r => $"{r.Value}:{r.Key}").ToList();
-                rebusDataList.Sort();
-                lines.AddRange(rebusDataList);
+                lines.AddRange(rebusDict.Select(r => $"{r.Value}:{r.Key}"));
             }
 
             // Clues
