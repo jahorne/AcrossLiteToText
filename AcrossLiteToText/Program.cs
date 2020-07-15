@@ -2,16 +2,34 @@
 using System.Collections.Generic;
 using System.IO;
 
+// Copyright (C) 2020, Jim Horne
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+// GNU General Public License for more details.
+//
+// You can see the license in detail here:
+// https://github.com/jahorne/AcrossLiteToText/blob/master/LICENSE
+
+
 namespace AcrossLiteToText
 {
     /// <summary>
+    /// 
     /// This file contains the Main entry point for the AcrossLiteToText console app.
     /// It's main purpose is to demonstrate the Across Lite binary file parsing, and
     /// text file generation capability, of the associated Puzzle class.
     ///
     /// Usage:  AcrossLiteToText inputFileOrFolder outputFolder (parameters optional)
+    /// 
     /// </summary>
-    
+
     internal static class Program
     {
         private static void Main(string[] args)
@@ -126,11 +144,11 @@ namespace AcrossLiteToText
                 foreach (string fileName in fileNames)
                     OutputTextFileFromPuzFile(fileName, toFolder);
 
-                Console.WriteLine("");
+                Console.WriteLine();
                 Console.WriteLine("==============");
-                Console.WriteLine("");
+                Console.WriteLine();
                 Console.WriteLine($"Number of files converted: {fileNames.Count}");
-                Console.WriteLine("");
+                Console.WriteLine();
 
                 foreach (string fileName in fileNames)
                     Console.WriteLine($"\t{fileName}");
@@ -171,13 +189,13 @@ namespace AcrossLiteToText
 
             // Copy lines to the console as well
 
-            Console.WriteLine("");
-            Console.WriteLine("");
+            Console.WriteLine();
+            Console.WriteLine();
             Console.WriteLine($"==========> {textFileName} created");
-            Console.WriteLine("");
+            Console.WriteLine();
 
             Console.Write(string.Join(Environment.NewLine, puz.Text));
-            Console.WriteLine("");
+            Console.WriteLine();
         }
 
 
@@ -188,6 +206,7 @@ namespace AcrossLiteToText
         {
             Console.WriteLine();
             Console.WriteLine("AcrossLiteToText converts Across Lite .puz files to text files.");
+            Console.WriteLine();
             Console.WriteLine("Specify a file or folder. Examples:");
             Console.WriteLine();
             Console.WriteLine("AcrossLiteToText filename.puz    (convert single file)");
@@ -195,12 +214,10 @@ namespace AcrossLiteToText
             Console.WriteLine("AcrossLiteToText .               (use . for current folder)");
             Console.WriteLine("AcrossLiteToText in out          (specify input and output folders");
             Console.WriteLine();
-            Console.WriteLine("Note: some valid puzzle files cannot be represented as text.");
-            Console.WriteLine();
             Console.WriteLine("PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.");
             Console.WriteLine("You need permission from the rights holders for most public and for all commercial uses.");
             Console.WriteLine();
-            Console.WriteLine("(c) 2020 by Jim Horne.");
+            Console.WriteLine("This program (c) 2020 by Jim Horne, licensed under GNU General Public License v3.0.");
             Console.WriteLine();
         }
     }

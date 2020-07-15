@@ -3,35 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+
+// Copyright (C) 2020, Jim Horne
+//
+// This program is free software.
+// See https://github.com/jahorne/AcrossLiteToText/blob/master/LICENSE
+
+
 namespace AcrossLiteToText
 {
     /// <summary>
-    /// 
-    ///     PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.
     ///
-    ///     You need permission from the rights holders for most public and for all commercial uses.
+    ///The constructor here takes a byte array from a binary Across Lite.puz file.
     ///
-    /// 
-    /// The constructor here takes a byte array from a binary Across Lite .puz file.
     /// A public Text property returns a list of strings that can be directly
     /// written to a text file using the appropriate encoding.
     ///
-    /// Parse using: Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
+    /// Parse Across Lite file: Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
     ///
     /// Generate text file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
     ///
-    ///
-    /// This code is written by Jim Horne, and derived from a similar class in XWord Info.
+    /// This code is derived from a similar class in XWord Info.
+    /// 
     /// </summary>
 
     internal class Puzzle
     {
-        // Across Lite encodes non-ASCII characters in ANSI, in particular,
-        // the version of ANSI defined by codepage 1252, specified as ISO-8859-1.
-        // Strings are read, and then must be written to text files, using this encoding.
-
-        public readonly Encoding AnsiEncoding = Encoding.GetEncoding("ISO-8859-1");
-
         // Public properties
 
         public bool IsValid { get; }                // true if file successfully parsed
@@ -39,7 +36,13 @@ namespace AcrossLiteToText
 
         public IEnumerable<string> Text => TextVersion();
 
-        // Private properties, basic info
+        // Across Lite encodes non-ASCII characters in ANSI, in particular,
+        // the version of ANSI defined by codepage 1252, specified as ISO-8859-1.
+        // Strings are read, and then must be written to text files, using this encoding.
+
+        public readonly Encoding AnsiEncoding = Encoding.GetEncoding("ISO-8859-1");
+
+        // Private properties
 
         private readonly string _title, _author, _copyright, _notepad;
         private readonly int _rowCount, _colCount;
