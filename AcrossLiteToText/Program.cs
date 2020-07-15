@@ -57,9 +57,10 @@ namespace AcrossLiteToText
                 if (string.IsNullOrEmpty(toFolder))
                 {
                     // If toFolder hasn't been set, try to make it the same as the
-                    // folder of the from file.
+                    // folder of the from file. Look for backslash or forward slash.
 
-                    int index = from.LastIndexOf('\\');
+                    char[] pathSeparators = {'\\', '/'};
+                    int index = from.LastIndexOfAny(pathSeparators);
                     toFolder = index == -1 ? "." : from.Substring(0, index);
                 }
 
@@ -126,7 +127,13 @@ namespace AcrossLiteToText
                     OutputTextFileFromPuzFile(fileName, toFolder);
 
                 Console.WriteLine("");
+                Console.WriteLine("==============");
+                Console.WriteLine("");
                 Console.WriteLine($"Number of files converted: {fileNames.Count}");
+                Console.WriteLine("");
+
+                foreach (string fileName in fileNames)
+                    Console.WriteLine($"\t{fileName}");
             }
         }
 
@@ -170,7 +177,7 @@ namespace AcrossLiteToText
             Console.WriteLine("");
 
             Console.Write(string.Join(Environment.NewLine, puz.Text));
-            Console.WriteLine(Environment.NewLine);
+            Console.WriteLine("");
         }
 
 
