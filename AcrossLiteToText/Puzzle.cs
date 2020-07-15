@@ -7,9 +7,9 @@ namespace AcrossLiteToText
 {
     /// <summary>
     /// 
-    ///         PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.
+    ///     PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.
     ///
-    /// You need permission from the rights holders for most public and for all commercial uses.
+    ///     You need permission from the rights holders for most public and for all commercial uses.
     ///
     /// 
     /// The constructor here takes a byte array from a binary Across Lite .puz file.
@@ -19,15 +19,9 @@ namespace AcrossLiteToText
     /// Parse using: Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
     ///
     /// Generate text file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
-    /// 
-    /// 
-    /// There is some useful documentation on the Across Lite binary format here:
-    ///     https://code.google.com/archive/p/puz/wikis/FileFormat.wiki
-    ///     
-    /// I can't vouch for its accuracy. Logic below was derived from direct examination
-    /// of the binary files.
     ///
-    /// This code is derived from a similar class in XWord Info, written by Jim Horne.
+    ///
+    /// This code is written by Jim Horne, and derived from a similar class in XWord Info.
     /// </summary>
 
     internal class Puzzle
@@ -68,14 +62,6 @@ namespace AcrossLiteToText
         private int[,] _rebusKeys;              // 0 means no rebus in this square, otherwise it's the dictionary key
 
         private Dictionary<int, string> _rebusLookup = new Dictionary<int, string>();
-
-        /// <summary>
-        /// Given a numeric value, return a char that can be used to identify a rebus square.
-        /// 0 to 9 first, then alphabetically from a.
-        /// </summary>
-        /// <param name="nValue"></param>
-        /// <returns></returns>
-        private static char RebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
 
 
         /// <summary>
@@ -242,14 +228,14 @@ namespace AcrossLiteToText
             
             string NextString()
             {
-                int startingLocation = i;
+                int startLocation = i;
 
-                // find string length by searching for terminating character '\0'
+                // find string length by searching for terminating '\0'
 
                 while (b[i] != 0)
                     i++;            
 
-                string str = AnsiEncoding.GetString(b, startingLocation, i - startingLocation).Trim();
+                string str = AnsiEncoding.GetString(b, startLocation, i - startLocation).Trim();
 
                 // Move index past trailing '\0' so it's ready for the next NexString()
                 // and return result.
@@ -341,7 +327,7 @@ namespace AcrossLiteToText
                 n += 8;             // offset from marker
                 found = false;      // reset
 
-                _rebusKeys = new int[_rowCount, _colCount];     // array to store rebus keys
+                _rebusKeys = new int[_rowCount, _colCount];     // array to location of rebus squares
 
                 for (int r = 0; r < _rowCount; r++)
                 {
@@ -448,8 +434,8 @@ namespace AcrossLiteToText
                     if (hasRebus)
                     {
                         // Look for existing rebus element, and reuse that same key if found.
-                        // Use increasing numbers for standard rebus squares.
-                        // If the rebus square ALSO has a circle, use decreasing lower-case letters.
+                        // Otherwise, use increasing numbers for standard rebus squares,
+                        // or decreasing lower-case letters for rebus squares that also have circles.
 
                         string rebusData = $"{_rebusLookup[_rebusKeys[r, c]]}:{_grid[r, c]}";
 
@@ -466,7 +452,7 @@ namespace AcrossLiteToText
                             }
                             else
                             {
-                                char rebusKey = RebusKey(rebusNumber++);
+                                char rebusKey = GetRebusKey(rebusNumber++);
                                 line += rebusKey;
                                 rebusDict.Add(rebusData, rebusKey);
                             }
@@ -521,6 +507,11 @@ namespace AcrossLiteToText
             }
 
             return lines;
+
+
+            // Local function to convert rebus int value to a character, '0' to '9' first, then 'a' to 'z'.
+
+            static char GetRebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
         }
     }
 }
