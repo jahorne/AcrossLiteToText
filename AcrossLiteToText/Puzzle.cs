@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml;
@@ -42,29 +41,6 @@ namespace AcrossLiteToText
     /// </summary>
 
 
-    public class Dimensions
-    {
-        public int Rows;
-        public int Cols;
-    }
-
-    public class Clue
-    {
-        public int Number;
-        public string Text;
-        public string Answer;
-    }
-
-    public class Crossword
-    {
-        public string Title, Author, Copyright;
-        public Dimensions Size;
-        public string Grid;
-        public List<Clue> Across, Down;
-        public string NotePad;
-    }
-
-
     internal class Puzzle
     {
         // Public properties
@@ -90,8 +66,8 @@ namespace AcrossLiteToText
         private readonly bool _isDiagramless;
         private const char Block = '.';
 
-        private readonly List<string> _acrossClues = new List<string>();
-        private readonly List<string> _downClues = new List<string>();
+        private readonly List<Tuple<int, string, string>> _acrossClueList = new List<Tuple<int, string, string>>();
+        private readonly List<Tuple<int, string, string>> _downClueList = new List<Tuple<int, string, string>>();
 
         // Circles
 
@@ -223,6 +199,13 @@ namespace AcrossLiteToText
             _author = NextString();
             _copyright = NextString(); // or perhaps NextString().Replace("©", "").Trim();
 
+            // Parse circles and, importantly, rebus data, so we can get correct answers.
+            // These functions return a boolean indicating whether circles or rebus squares exist,
+            // and they fill the relevant arrays.
+
+            _hasCircles = ParseCircles(b, i);
+            _isRebus = ParseRebus(isManuallySolved, b, i);
+
             // Figure out clues. They are ordered in Across Lite in an odd way.
             // Look for the next numbered cell. If an Across answer starts there,
             // that's the next clue. If there is only a Down starting there, it's next.
@@ -239,27 +222,28 @@ namespace AcrossLiteToText
 
                         if ((c == 0 || _grid[r, c - 1] == Block) && c != _colCount - 1 && _grid[r, c + 1] != Block)
                         {
-                            _acrossClues.Add(NextString());
+                            string clue = NextString();
+                            string answer = GetAcrossAnswer(r, c);
+
+                            _acrossClueList.Add(Tuple.Create(gridNumbers[r, c], clue, answer));
                         }
 
                         // Next look for a Down clue at this same grid number using similar logic to above
 
                         if ((r == 0 || _grid[r - 1, c] == Block) && r != _rowCount - 1 && _grid[r + 1, c] != Block)
                         {
-                            _downClues.Add(NextString());
+                            string clue = NextString();
+                            string answer = GetDownAnswer(r, c);
+
+                            _downClueList.Add(Tuple.Create(gridNumbers[r, c], clue, answer));
                         }
                     }
                 }
             }
 
+            // Finally, at the end of all the clues, there might be a notepad
+
             _notepad = NextString();
-
-            // Finally, get Circle and Rebus data.
-            // These functions return a boolean indicating whether circles or rebus squares exist,
-            // and they fill the relevant arrays.
-
-            _hasCircles = ParseCircles(b, i);
-            _isRebus = ParseRebus(isManuallySolved, b, i);
 
             IsValid = true;
 
@@ -287,6 +271,54 @@ namespace AcrossLiteToText
                 i++;
                 return str;
             }
+        }
+
+
+        /// <summary>
+        /// GetAcrossAnswer determines the across word at the specified grid location
+        /// </summary>
+        /// <param name="r">row</param>
+        /// <param name="c">col</param>
+        /// <returns></returns>
+        private string GetAcrossAnswer(int r, int c)
+        {
+            string ans = string.Empty;
+
+            while (c < _colCount && _grid[r, c] != '.')
+            {
+                if (_isRebus && _rebusKeys[r, c] > 0)
+                    ans += _rebusLookup[_rebusKeys[r, c]];
+                else
+                    ans += _grid[r, c];
+
+                c++;
+            }
+
+            return ans;
+        }
+
+
+        /// <summary>
+        /// GetDownAnswer determines the down word at the specified grid location
+        /// </summary>
+        /// <param name="r">row</param>
+        /// <param name="c">col</param>
+        /// <returns></returns>
+        private string GetDownAnswer(int r, int c)
+        {
+            string ans = string.Empty;
+
+            while (r < _rowCount && _grid[r, c] != '.')
+            {
+                if (_isRebus && _rebusKeys[r, c] > 0)
+                    ans += _rebusLookup[_rebusKeys[r, c]];
+                else
+                    ans += _grid[r, c];
+
+                r++;
+            }
+
+            return ans;
         }
 
 
@@ -539,10 +571,12 @@ namespace AcrossLiteToText
             // Clues
 
             lines.Add("<ACROSS>");
-            lines.AddRange(_acrossClues.Select(line => $"\t{line}"));
+            lines.AddRange(_acrossClueList.Select(i => $"\t{i.Item2}"));
 
             lines.Add("<DOWN>");
-            lines.AddRange(_downClues.Select(line => $"\t{line}"));
+
+            lines.AddRange(_downClueList.Select(i => $"\t{i.Item2}"));
+
 
             // Notepad
 
@@ -576,12 +610,20 @@ namespace AcrossLiteToText
                 Copyright = _copyright,
                 Size = new Dimensions {Rows = _rowCount, Cols = _colCount},
                 Grid = sbGrid.ToString(),
-                NotePad = _notepad
+                NotePad = _notepad,
+                Across = new List<Clue>(),
+                Down = new List<Clue>()
             };
 
-            puzData.Across = new List<Clue>();
-            Clue clue = new Clue {Number = 1, Text = "this is the clue", Answer = "ANSWERWORD"};
-            puzData.Across.Add(clue);
+            foreach ((int number, string text, string answer) in _acrossClueList)
+            {
+                puzData.Across.Add(new Clue { Number = number, Text = text, Answer = answer });
+            }
+
+            foreach ((int number, string text, string answer) in _downClueList)
+            {
+                puzData.Down.Add(new Clue { Number = number, Text = text, Answer = answer });
+            }
 
             // Go through some hoops just to write a comment at the top of the document
 
@@ -601,5 +643,4 @@ namespace AcrossLiteToText
             return doc;
         }
     }
-
 }

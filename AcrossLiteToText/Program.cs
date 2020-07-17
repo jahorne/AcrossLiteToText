@@ -59,8 +59,6 @@ namespace AcrossLiteToText
                     toFolder = args[1];
             }
 
-            from = "c:/users/jimh/desktop";     // BUG BUGBUG REMOVE
-
             // If we didn't get a from file or folder, bail.
 
             if (string.IsNullOrEmpty(from))
@@ -191,8 +189,8 @@ namespace AcrossLiteToText
 
                     // And to the console as well
 
-                    puz.Xml.Save(Console.Out);
-                    Console.WriteLine();
+                    //puz.Xml.Save(Console.Out);
+                    //Console.WriteLine();
                 }
 
                 // Final stats
