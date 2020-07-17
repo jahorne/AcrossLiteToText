@@ -1,5 +1,7 @@
 # Crossword: Across Lite .puz to text file converter
 
+[![XWord Info](https://www.xwordinfo.com/images/Puz2Txt2.jpg "XWord Info")](https://www.xwordinfo.com "XWord Info")
+
 This .Net Core console application converts one or more Across Lite .puz files into their text file equivalents. As of version 2.0, XML files which contain more information are also generated. [See the wiki](https://github.com/jahorne/AcrossLiteToText/wiki "See the wiki") for more info.
 
 Compile it to run on Windows, Macs, or Unix computers.
