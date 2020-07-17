@@ -45,8 +45,8 @@ namespace AcrossLiteToText
     {
         // Public properties
 
-        public bool IsValid { get; } // true if file successfully parsed
-        public bool IsLocked { get; } // true if the Across Lite puzzle is locked
+        public bool IsValid { get; }    // true if file successfully parsed
+        public bool IsLocked { get; }   // true if the Across Lite puzzle is locked
 
         public IEnumerable<string> Text => TextVersion();
         public XmlDocument Xml => XmlDoc();
@@ -71,13 +71,13 @@ namespace AcrossLiteToText
 
         // Circles
 
-        private readonly bool _hasCircles; // does this puzzle have any circles?
-        private bool[,] _hasCircle; // true if individual grid squares have circles?
+        private readonly bool _hasCircles;  // does this puzzle have any circles?
+        private bool[,] _hasCircle;         // true if individual grid squares have circles?
 
         // Rebus
 
-        private readonly bool _isRebus; // does this puzzle have any rebus entries?
-        private int[,] _rebusKeys; // 0 means no rebus in this square, otherwise it's the dictionary key
+        private readonly bool _isRebus;     // does this puzzle have any rebus entries?
+        private int[,] _rebusKeys;          // 0 means no rebus in this square, otherwise it's the dictionary key
 
         private Dictionary<int, string> _rebusLookup = new Dictionary<int, string>();
 
@@ -93,8 +93,8 @@ namespace AcrossLiteToText
             // Standard locations of key data
 
             const int columnsOffset = 0x2c; // number of columns is at this offset in Across Lite file
-            const int rowsOffset = 0x2d; // number of rows is in next byte
-            const int gridOffset = 0x34; // standard location to start parsing grid data in binary stream
+            const int rowsOffset = 0x2d;    // number of rows is in next byte
+            const int gridOffset = 0x34;    // standard location to start parsing grid data in binary stream
 
             // Check if puzzle is locked.
             // We'll proceed anyway, in case the puzzle is manually solved.
@@ -103,9 +103,9 @@ namespace AcrossLiteToText
 
             // Grid dimensions
 
-            _colCount = b[columnsOffset]; // number of columns
-            _rowCount = b[rowsOffset]; // number of rows
-            _gridSize = _colCount * _rowCount; // size of grid info in byte array
+            _colCount = b[columnsOffset];       // number of columns
+            _rowCount = b[rowsOffset];          // number of rows
+            _gridSize = _colCount * _rowCount;  // size of grid info in byte array
 
             // We now know how big the puzzle is so we can generate the grids
 
@@ -153,8 +153,8 @@ namespace AcrossLiteToText
 
                     if (cLetter == ':')
                     {
-                        _isDiagramless = true; // : indicates "black" square for diagramless
-                        _grid[r, c] = Block; // but normalize normalize to . and fix later.
+                        _isDiagramless = true;  // : indicates "black" square for diagramless
+                        _grid[r, c] = Block;    // but normalize normalize to . and fix later.
                     }
                     else
                         _grid[r, c] = cLetter;
@@ -398,12 +398,12 @@ namespace AcrossLiteToText
                 n++;
             }
 
-            if (found) // if marker found (might be bogus)
+            if (found)          // if marker found (might be bogus)
             {
-                n += 8; // offset from marker
-                found = false; // reset
+                n += 8;         // offset from marker
+                found = false;  // reset
 
-                _rebusKeys = new int[_rowCount, _colCount]; // array to location of rebus squares
+                _rebusKeys = new int[_rowCount, _colCount];     // array to location of rebus squares
 
                 for (int r = 0; r < _rowCount; r++)
                 {
@@ -422,7 +422,7 @@ namespace AcrossLiteToText
 
                 if (found)
                 {
-                    n += 9; // skip to start of substring table
+                    n += 9;     // skip to start of substring table
 
                     StringBuilder sb = new StringBuilder();
 
@@ -495,19 +495,17 @@ namespace AcrossLiteToText
 
             Dictionary<string, char> rebusDict = new Dictionary<string, char>(); // rebus keys and associated strings
 
-            int rebusNumber = 0; // standard rebus uses numbers, starting here and increasing
-            char
-                rebusCircleKey =
-                    'z'; // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
+            int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
+            char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
 
             for (int r = 0; r < _rowCount; r++)
             {
-                string line = "\t"; // each row starts a new line
+                string line = "\t";     // each row starts a new line
 
                 for (int c = 0; c < _colCount; c++)
                 {
-                    bool hasRebus = _isRebus && _rebusKeys[r, c] != 0; // true if this square has a rebus
-                    bool hasCircle = _hasCircles && _hasCircle[r, c]; // true if this square has a circle
+                    bool hasRebus = _isRebus && _rebusKeys[r, c] != 0;  // true if this square has a rebus
+                    bool hasCircle = _hasCircles && _hasCircle[r, c];   // true if this square has a circle
 
                     if (hasRebus)
                     {
@@ -574,9 +572,7 @@ namespace AcrossLiteToText
             lines.AddRange(_acrossClueList.Select(i => $"\t{i.Item2}"));
 
             lines.Add("<DOWN>");
-
             lines.AddRange(_downClueList.Select(i => $"\t{i.Item2}"));
-
 
             // Notepad
 
@@ -595,15 +591,25 @@ namespace AcrossLiteToText
         }
 
 
+        /// <summary>
+        /// Returns an XML Document for writing to a file or the console.
+        /// A Crossword variable is filled, and can then be serialized.
+        /// </summary>
+        /// <returns></returns>
         private XmlDocument XmlDoc()
         {
+            // The Grid element is a linear list of characters.
+            // Capital letters are standard answers.
+            // Lower-case letters should be displayed with circles.
+            // Numbers (or letters in the Rebus section) need to be looked up in the table.
+
             StringBuilder sbGrid = new StringBuilder();
 
             for (int r = 0; r < _rowCount; r++)
-            for (int c = 0; c < _colCount; c++)
-                sbGrid.Append(_grid[r, c]);
+                for (int c = 0; c < _colCount; c++)
+                    sbGrid.Append(_grid[r, c]);
 
-            Crossword puzData = new Crossword
+            Crossword cw = new Crossword
             {
                 Author = _author,
                 Title = _title,
@@ -615,24 +621,27 @@ namespace AcrossLiteToText
                 Down = new List<Clue>()
             };
 
+            // Clue tuples are Grid number, Clue text, and Answer.
+
             foreach ((int number, string text, string answer) in _acrossClueList)
             {
-                puzData.Across.Add(new Clue { Number = number, Text = text, Answer = answer });
+                cw.Across.Add(new Clue { Number = number, Text = text, Answer = answer });
             }
 
             foreach ((int number, string text, string answer) in _downClueList)
             {
-                puzData.Down.Add(new Clue { Number = number, Text = text, Answer = answer });
+                cw.Down.Add(new Clue { Number = number, Text = text, Answer = answer });
             }
 
             // Go through some hoops just to write a comment at the top of the document
 
             XmlDocument doc = new XmlDocument();
             XPathNavigator nav = doc.CreateNavigator();
-            using (XmlWriter w = nav.AppendChild())
+
+            using (XmlWriter writer = nav.AppendChild())
             {
                 XmlSerializer ser = new XmlSerializer(typeof(Crossword));
-                ser.Serialize(w, puzData);
+                ser.Serialize(writer, cw);
             }
 
             XmlComment newComment = doc.CreateComment("Generated from AcrossLiteToText by Jim Horne. See https://github.com/jahorne/AcrossLiteToText");

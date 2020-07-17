@@ -171,8 +171,8 @@ namespace AcrossLiteToText
 
                     // Write the text to a file
 
-            string textFileName = @$"{toFolder}{Path.DirectorySeparatorChar}{puzFile.Name.Replace(".puz", ".txt")}";
-            File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
+                    string textFileName = @$"{toFolder}{Path.DirectorySeparatorChar}{fi.Name.Replace(".puz", ".txt")}";
+                    File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
 
                     // Write the text to console
 
@@ -189,8 +189,8 @@ namespace AcrossLiteToText
 
                     // And to the console as well
 
-                    //puz.Xml.Save(Console.Out);
-                    //Console.WriteLine();
+                    puz.Xml.Save(Console.Out);
+                    Console.WriteLine();
                 }
 
                 // Final stats
