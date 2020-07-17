@@ -184,14 +184,15 @@ namespace AcrossLiteToText
 
             // Write out the text file
 
-            string textFileName = @$"{toFolder}\{puzFile.Name.Replace(".puz", ".txt")}";
+            string textFileName = @$"{toFolder}{Path.DirectorySeparatorChar}{puzFile.Name.Replace(".puz", ".txt")}";
             File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
+
 
             // Copy lines to the console as well
 
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine($"==========> {textFileName} created");
+            Console.WriteLine(File.Exists(textFileName) ? $"==========> {textFileName} created" : $"==========> {textFileName} NOT created");
             Console.WriteLine();
 
             Console.Write(string.Join(Environment.NewLine, puz.Text));
