@@ -77,6 +77,7 @@ namespace AcrossLiteToText
         // Rebus
 
         private readonly bool _isRebus;     // does this puzzle have any rebus entries?
+        private string _rebusCode;          // as found in the Across Lite file
         private int[,] _rebusKeys;          // 0 means no rebus in this square, otherwise it's the dictionary key
 
         private Dictionary<int, string> _rebusLookup = new Dictionary<int, string>();
@@ -429,7 +430,7 @@ namespace AcrossLiteToText
                     while (b[n] != 0)
                         sb.Append((char) b[n++]);
 
-                    _rebusLookup = CrackRebusSubstitutionString(sb.ToString());
+                    _rebusLookup = CrackRebusCode(sb.ToString());
                 }
             }
 
@@ -444,7 +445,7 @@ namespace AcrossLiteToText
         /// </summary>
         /// <param name="str"></param>
         /// <returns></returns>
-        private static Dictionary<int, string> CrackRebusSubstitutionString(string str)
+        private static Dictionary<int, string> CrackRebusCode(string str)
         {
             Dictionary<int, string> dict = new Dictionary<int, string>();
 
@@ -585,10 +586,11 @@ namespace AcrossLiteToText
             return lines;
 
 
-            // Local function to convert rebus int value to a character, '0' to '9' first, then 'a' to 'z'.
 
-            static char GetRebusKey(int nValue) => nValue < 10 ? (char) (nValue + '0') : (char) (nValue + 'a' - 10);
+            
         }
+
+        static char GetRebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
 
 
         /// <summary>
@@ -598,39 +600,50 @@ namespace AcrossLiteToText
         /// <returns></returns>
         private XmlDocument XmlDoc()
         {
-            // The Grid element is a linear list of characters.
-            // Capital letters are standard answers.
-            // Lower-case letters should be displayed with circles.
-            // Numbers (or letters in the Rebus section) need to be looked up in the table.
+            // lines.AddRange(rebusDict.Select(r => $"{r.Value}:{r.Key}"));
 
-            StringBuilder sbGrid = new StringBuilder();
+            
 
-            for (int r = 0; r < _rowCount; r++)
-                for (int c = 0; c < _colCount; c++)
-                    sbGrid.Append(_grid[r, c]);
-
-            Crossword cw = new Crossword
+            Crossword puzData = new Crossword
             {
                 Author = _author,
                 Title = _title,
                 Copyright = _copyright,
-                Size = new Dimensions {Rows = _rowCount, Cols = _colCount},
-                Grid = sbGrid.ToString(),
-                NotePad = _notepad,
+                Size = new Dimensions { Rows = _rowCount, Cols = _colCount },
+                Grid = new List<Row>(),
+                NotePad = string.IsNullOrWhiteSpace(_notepad) ? null : _notepad,
                 Across = new List<Clue>(),
-                Down = new List<Clue>()
+                Down = new List<Clue>(),
+                HasCircles = _hasCircles,
+                IsRebus = _isRebus,
+                RebusCode = _rebusCode
             };
 
-            // Clue tuples are Grid number, Clue text, and Answer.
+            // Fill the grid, a row at a time
+
+            //for (int r = 0; r < _rowCount; r++)
+            //{
+            //    string row = string.Empty;
+
+            //    for (int c = 0; c < _colCount; c++)
+            //        row += _hasCircles && _hasCircle[r, c] ? char.ToLower(_grid[r, c]) : _grid[r, c];
+
+            //    puzData.Grid.Add(new Row { RowText = row });
+            //}
+
+            foreach (string line in GetGridLines())
+                puzData.Grid.Add(new Row { RowText = line });
+
+            // Clues
 
             foreach ((int number, string text, string answer) in _acrossClueList)
             {
-                cw.Across.Add(new Clue { Number = number, Text = text, Answer = answer });
+                puzData.Across.Add(new Clue { Number = number, Text = text, Answer = answer });
             }
 
             foreach ((int number, string text, string answer) in _downClueList)
             {
-                cw.Down.Add(new Clue { Number = number, Text = text, Answer = answer });
+                puzData.Down.Add(new Clue { Number = number, Text = text, Answer = answer });
             }
 
             // Go through some hoops just to write a comment at the top of the document
@@ -638,18 +651,96 @@ namespace AcrossLiteToText
             XmlDocument doc = new XmlDocument();
             XPathNavigator nav = doc.CreateNavigator();
 
-            using (XmlWriter writer = nav.AppendChild())
+            using (XmlWriter w = nav.AppendChild())
             {
                 XmlSerializer ser = new XmlSerializer(typeof(Crossword));
-                ser.Serialize(writer, cw);
+                ser.Serialize(w, puzData);
             }
 
-            XmlComment newComment = doc.CreateComment("Generated from AcrossLiteToText by Jim Horne. See https://github.com/jahorne/AcrossLiteToText");
+            string comment = $"Generated from AcrossLiteToText on {DateTime.Now.ToUniversalTime()} UTC. See https://github.com/jahorne/AcrossLiteToText";
+
+            XmlComment xmlComment = doc.CreateComment(comment);
 
             XmlElement root = doc.DocumentElement;
-            doc.InsertBefore(newComment, root);
+            doc.InsertBefore(xmlComment, root);
 
             return doc;
+        }
+
+
+
+        List<string> GetGridLines(bool bIncludeTab = false)
+        {
+            Dictionary<string, char> rebusDict = new Dictionary<string, char>(); // rebus keys and associated strings
+            List<string> lines = new List<string>();
+
+            int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
+            char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
+
+            for (int r = 0; r < _rowCount; r++)
+            {
+                string line = bIncludeTab ? "\t" : string.Empty;
+
+                for (int c = 0; c < _colCount; c++)
+                {
+                    bool hasRebus = _isRebus && _rebusKeys[r, c] != 0;  // true if this square has a rebus
+                    bool hasCircle = _hasCircles && _hasCircle[r, c];   // true if this square has a circle
+
+                    if (hasRebus)
+                    {
+                        // Look for existing rebus element, and reuse that same key if found.
+                        // Otherwise, use increasing numbers for standard rebus squares,
+                        // or decreasing lower-case letters for rebus squares that also have circles.
+
+                        string rebusData = $"{_rebusLookup[_rebusKeys[r, c]]}:{_grid[r, c]}";
+
+                        if (rebusDict.TryGetValue(rebusData, out char ch))
+                        {
+                            line += ch;
+                        }
+                        else
+                        {
+                            if (hasCircle)
+                            {
+                                line += rebusCircleKey;
+                                rebusDict.Add(rebusData, rebusCircleKey--);
+                            }
+                            else
+                            {
+                                char rebusKey = GetRebusKey(rebusNumber++);
+                                line += rebusKey;
+                                rebusDict.Add(rebusData, rebusKey);
+                            }
+                        }
+                    }
+                    else if (hasCircle)
+                    {
+                        // Circles are indicated with lower-case letters
+
+                        line += char.ToLower(_grid[r, c]);
+                    }
+                    else if (_isDiagramless && _grid[r, c] == Block)
+                    {
+                        line += ":";
+                    }
+                    else
+                    {
+                        line += _grid[r, c];
+                    }
+                }
+
+                lines.Add(line);
+            }
+
+            // lines.AddRange(rebusDict.Select(r => $"{r.Value}:{r.Key}"));
+
+            _rebusCode = string.Empty;
+
+            foreach ((string key, char value) in rebusDict)
+                _rebusCode += $"{value}:{key};";
+
+
+            return lines;
         }
     }
 }
