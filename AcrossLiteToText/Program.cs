@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using System.Xml;
 
 // Copyright (C) 2020, Jim Horne
 //
@@ -37,7 +39,9 @@ namespace AcrossLiteToText
             string from;                // filename or directory of .puz file(s)
             string toFolder = null;     // directory to create converted .txt file(s)
 
-            List<string> fileNames = new List<string>();    // list of files to convert
+            //List<string> fileNames = new List<string>();    // list of files to convert
+
+            List<FileInfo> fileList = new List<FileInfo>();
 
             // Get the names of the input file or folder, and the output folder.
 
@@ -54,6 +58,8 @@ namespace AcrossLiteToText
                 if (args.Length > 1)
                     toFolder = args[1];
             }
+
+            from = "c:/users/jimh/desktop";     // BUG BUGBUG REMOVE
 
             // If we didn't get a from file or folder, bail.
 
@@ -82,10 +88,9 @@ namespace AcrossLiteToText
                     toFolder = index == -1 ? "." : from.Substring(0, index);
                 }
 
-                // Save the filename to convert later
+                // Save the file info to convert later
 
-                FileInfo puzFile = new FileInfo(from);
-                fileNames.Add(puzFile.FullName);
+                fileList.Add(new FileInfo(from));
             }
 
             // If from wasn't a file, maybe it was a folder.
@@ -100,10 +105,9 @@ namespace AcrossLiteToText
                 if (string.IsNullOrWhiteSpace(toFolder))
                     toFolder = from;
 
-                // Save all the .puz files in the from folder to convert later.
+                // Save all the .puz files in the from folder
 
-                foreach (FileInfo puzFile in dir.GetFiles("*.puz"))
-                    fileNames.Add(puzFile.FullName);
+                fileList.AddRange(dir.GetFiles("*.puz"));
             }
 
             // Couldn't fine a file OR a folder, so bail
@@ -132,70 +136,76 @@ namespace AcrossLiteToText
                 }
             }
 
-            // For each filename collected, create the text file
-            // and write the contents of each file to the console.
+            // We're ready to convert files
 
-            if (fileNames.Count == 0)
+            if (fileList.Count == 0)
             {
                 Console.WriteLine("No Across Lite files found");
             }
             else
             {
-                foreach (string fileName in fileNames)
-                    OutputTextFileFromPuzFile(fileName, toFolder);
+                // For each fileInfo collected, create a Puzzle object,
+                // and write out the text and XML files.
+
+                foreach (FileInfo fi in fileList)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine();
+                    Console.WriteLine($"********** CONVERTING: {fi.FullName} **********");
+                    Console.WriteLine();
+
+                    if (!fi.Name.EndsWith(".puz"))
+                    {
+                        Console.WriteLine($"ERROR: {fi.FullName} is not a correctly named Across Lite puzzle file");
+                        continue;
+                    }
+
+                    Puzzle puz = new Puzzle(File.ReadAllBytes(fi.FullName));
+
+                    if (!puz.IsValid)
+                    {
+                        Console.WriteLine($"ERROR: {fi.Name} appears to be an invalid Across Lite file");
+                        continue;
+                    }
+
+                    if (puz.IsLocked)
+                        Console.WriteLine($"WARNING: {fi.Name} appears to be locked");
+
+                    // Write the text to a file
+
+                    string textFileName = @$"{toFolder}\{fi.Name.Replace(".puz", ".txt")}";
+                    File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
+
+                    // Write the text to console
+
+                    Console.Write(string.Join(Environment.NewLine, puz.Text));
+                    Console.WriteLine();
+
+                    // Write the XML to a file
+
+                    string xmlFileName = textFileName.Replace(".txt", ".xml");
+                    XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
+                    XmlWriter writer = XmlWriter.Create(xmlFileName, settings);
+                    puz.Xml.Save(writer);
+                    Console.WriteLine();
+
+                    // And to the console as well
+
+                    puz.Xml.Save(Console.Out);
+                    Console.WriteLine();
+                }
+
+                // Final stats
 
                 Console.WriteLine();
                 Console.WriteLine("==============");
                 Console.WriteLine();
-                Console.WriteLine($"Number of files converted: {fileNames.Count}");
+                Console.WriteLine($"Number of files converted: {fileList.Count}");
                 Console.WriteLine();
 
-                foreach (string fileName in fileNames)
-                    Console.WriteLine($"\t{fileName}");
+                foreach (FileInfo fileInfo in fileList)
+                    Console.WriteLine($"\t{fileInfo.FullName}");
             }
-        }
-
-
-        /// <summary>
-        /// Create a Puzzle object from the puzFile, and write out its equivalent text file.
-        /// </summary>
-        /// <param name="fileName"></param>
-        /// <param name="toFolder"></param>
-        private static void OutputTextFileFromPuzFile(string fileName, string toFolder)
-        {
-            FileInfo puzFile = new FileInfo(fileName);
-
-            if (!puzFile.Name.EndsWith(".puz"))
-            {
-                Console.WriteLine($"ERROR: {puzFile.Name} is not a correctly named Across Lite puzzle file");
-                return;
-            }
-
-            Puzzle puz = new Puzzle(File.ReadAllBytes(puzFile.FullName));
-
-            if (!puz.IsValid)
-            {
-                Console.WriteLine($"ERROR: {puzFile.Name} appears to be an invalid Across Lite file");
-                return;
-            }
-
-            if (puz.IsLocked)
-                Console.WriteLine($"WARNING: {puzFile.Name} appears to be locked");
-
-            // Write out the text file
-
-            string textFileName = @$"{toFolder}\{puzFile.Name.Replace(".puz", ".txt")}";
-            File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
-
-            // Copy lines to the console as well
-
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine($"==========> {textFileName} created");
-            Console.WriteLine();
-
-            Console.Write(string.Join(Environment.NewLine, puz.Text));
-            Console.WriteLine();
         }
 
 
