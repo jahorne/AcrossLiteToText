@@ -16,7 +16,7 @@ using System.Xml.XPath;
 //
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You can see the license in detail here:
@@ -27,14 +27,16 @@ namespace AcrossLiteToText
 {
     /// <summary>
     ///
-    ///The constructor here takes a byte array from a binary Across Lite.puz file.
+    /// The constructor here takes a byte array from a binary AcrossLite.puz file.
     ///
     /// A public Text property returns a list of strings that can be directly
     /// written to a text file using the appropriate encoding.
     ///
     /// Parse Across Lite file: Puzzle puz = new Puzzle(File.ReadAllBytes(file.FullName));
     ///
-    /// Generate text file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
+    /// Create text file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
+    ///
+    /// Or return a full XmlDocument (includes answers) using puz.Xml
     ///
     /// This code is derived from a similar class in XWord Info.
     /// 
@@ -79,8 +81,11 @@ namespace AcrossLiteToText
         // Rebus
 
         private readonly bool _isRebus;     // does this puzzle have any rebus entries?
-        private string _rebusCode;          // as found in the Across Lite file
         private int[,] _rebusKeys;          // 0 means no rebus in this square, otherwise it's the dictionary key
+
+        // Convert integer into rebus key char, '0' to '9' and then 'a' to 'z'
+
+        private static char GetRebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
 
         // Dictionary to map integer identifiers in the Across Lite file to their associated replacement strings
 
@@ -223,27 +228,27 @@ namespace AcrossLiteToText
             {
                 for (int c = 0; c < _colCount; c++)
                 {
-                    if (gridNumbers[r, c] != 0) // if there is a grid number here...
+                    if (gridNumbers[r, c] == 0)
+                        continue;
+
+                    // If it's the start of an Across answer, then the next string is an Across clue
+
+                    if ((c == 0 || _grid[r, c - 1] == Block) && c != _colCount - 1 && _grid[r, c + 1] != Block)
                     {
-                        // If it's the start of an Across answer, then the next string is an Across clue
+                        string clue = NextString();
+                        string answer = GetAcrossAnswer(r, c);
 
-                        if ((c == 0 || _grid[r, c - 1] == Block) && c != _colCount - 1 && _grid[r, c + 1] != Block)
-                        {
-                            string clue = NextString();
-                            string answer = GetAcrossAnswer(r, c);
+                        _acrossClueList.Add(Tuple.Create(gridNumbers[r, c], clue, answer));
+                    }
 
-                            _acrossClueList.Add(Tuple.Create(gridNumbers[r, c], clue, answer));
-                        }
+                    // Next look for a Down clue at this same grid number using similar logic to above
 
-                        // Next look for a Down clue at this same grid number using similar logic to above
+                    if ((r == 0 || _grid[r - 1, c] == Block) && r != _rowCount - 1 && _grid[r + 1, c] != Block)
+                    {
+                        string clue = NextString();
+                        string answer = GetDownAnswer(r, c);
 
-                        if ((r == 0 || _grid[r - 1, c] == Block) && r != _rowCount - 1 && _grid[r + 1, c] != Block)
-                        {
-                            string clue = NextString();
-                            string answer = GetDownAnswer(r, c);
-
-                            _downClueList.Add(Tuple.Create(gridNumbers[r, c], clue, answer));
-                        }
+                        _downClueList.Add(Tuple.Create(gridNumbers[r, c], clue, answer));
                     }
                 }
             }
@@ -282,50 +287,52 @@ namespace AcrossLiteToText
 
 
         /// <summary>
-        /// GetAcrossAnswer determines the across word at the specified grid location
+        /// GetAcrossAnswer determines the across word at the specified grid location.
+        /// Advance the column until we hit a barrier, collecting grid contents along the way.
         /// </summary>
-        /// <param name="r">row</param>
-        /// <param name="c">col</param>
+        /// <param name="row"></param>
+        /// <param name="col"></param>
         /// <returns></returns>
-        private string GetAcrossAnswer(int r, int c)
+        private string GetAcrossAnswer(int row, int col)
         {
-            string ans = string.Empty;
+            string answer = string.Empty;
 
-            while (c < _colCount && _grid[r, c] != '.')
+            while (col < _colCount && _grid[row, col] != '.')
             {
-                if (_isRebus && _rebusKeys[r, c] > 0)
-                    ans += _crackedRebusCode[_rebusKeys[r, c]];
+                if (_isRebus && _rebusKeys[row, col] > 0)
+                    answer += _crackedRebusCode[_rebusKeys[row, col]];
                 else
-                    ans += _grid[r, c];
+                    answer += _grid[row, col];
 
-                c++;
+                col++;
             }
 
-            return ans;
+            return answer;
         }
 
 
         /// <summary>
-        /// GetDownAnswer determines the down word at the specified grid location
+        /// GetDownAnswer determines the down word at the specified grid location.
+        /// Same as GetAcrossAnswer except we advance the row until we hit a barrier.
         /// </summary>
-        /// <param name="r">row</param>
-        /// <param name="c">col</param>
+        /// <param name="row"></param>
+        /// <param name="col"></param>
         /// <returns></returns>
-        private string GetDownAnswer(int r, int c)
+        private string GetDownAnswer(int row, int col)
         {
-            string ans = string.Empty;
+            string answer = string.Empty;
 
-            while (r < _rowCount && _grid[r, c] != '.')
+            while (row < _rowCount && _grid[row, col] != '.')
             {
-                if (_isRebus && _rebusKeys[r, c] > 0)
-                    ans += _crackedRebusCode[_rebusKeys[r, c]];
+                if (_isRebus && _rebusKeys[row, col] > 0)
+                    answer += _crackedRebusCode[_rebusKeys[row, col]];
                 else
-                    ans += _grid[r, c];
+                    answer += _grid[row, col];
 
-                r++;
+                row++;
             }
 
-            return ans;
+            return answer;
         }
 
 
@@ -360,15 +367,15 @@ namespace AcrossLiteToText
 
                 _hasCircle = new bool[_rowCount, _colCount];    // array to store circle data
 
-                for (int r = 0; r < _rowCount; r++)
+                for (int row = 0; row < _rowCount; row++)
                 {
-                    for (int c = 0; c < _colCount; c++, n++)
+                    for (int col = 0; col < _colCount; col++, n++)
                     {
                         // 0x80 means circle, 0xC0 means circle in diagramless
 
                         if (b[n] == 0x80 || b[n] == 0xC0)
                         {
-                            _hasCircle[r, c] = true;
+                            _hasCircle[row, col] = true;
                             found = true;
                         }
                     }
@@ -412,13 +419,13 @@ namespace AcrossLiteToText
 
                 _rebusKeys = new int[_rowCount, _colCount];     // array to location of rebus squares
 
-                for (int r = 0; r < _rowCount; r++)
+                for (int row = 0; row < _rowCount; row++)
                 {
-                    for (int c = 0; c < _colCount; c++)
+                    for (int col = 0; col < _colCount; col++)
                     {
                         int rebusKey = b[n++];
 
-                        _rebusKeys[r, c] = rebusKey;
+                        _rebusKeys[row, col] = rebusKey;
 
                         if (rebusKey > 0)
                             found = true;
@@ -495,7 +502,7 @@ namespace AcrossLiteToText
 
             // Output the grid
 
-            lines.AddRange(GetGridLines());
+            lines.AddRange(GetGridRows());
 
             // <REBUS> indicates circles or true rebus strings.
             // MARK: means squares with lower-case letters should be circled.
@@ -549,12 +556,11 @@ namespace AcrossLiteToText
                 Down = new List<Clue>(),
                 HasCircles = _hasCircles,
                 IsRebus = _isRebus,
-                RebusCode = _rebusCode
             };
 
             // Fill the grid, a row at a time
 
-            foreach (string line in GetGridLines(bIncludeTab: false))
+            foreach (string line in GetGridRows(bIncludeTab: false))
                 puzData.Grid.Add(new Row { RowText = line });
 
             // Clues
@@ -567,6 +573,16 @@ namespace AcrossLiteToText
             foreach ((int number, string text, string answer) in _downClueList)
             {
                 puzData.Down.Add(new Clue { Number = number, Text = text, Answer = answer });
+            }
+
+            if (_isRebus)
+            {
+                puzData.RebusCodes = new List<RebusCode>();
+
+                foreach ((string key, char value) in _rebusDict)
+                {
+                    puzData.RebusCodes.Add(new RebusCode { CodeText = $"{value}:{key};" });
+                }
             }
 
             // Go through some hoops just to write a comment at the top of the document
@@ -591,16 +607,16 @@ namespace AcrossLiteToText
         }
 
 
-        private List<string> GetGridLines(bool bIncludeTab = true)
+        private List<string> GetGridRows(bool bIncludeTab = true)
         {
-            List<string> lines = new List<string>();
+            List<string> rows = new List<string>();
 
             int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
             char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
             
             for (int r = 0; r < _rowCount; r++)
             {
-                string line = bIncludeTab ? "\t" : string.Empty;
+                string row = bIncludeTab ? "\t" : string.Empty;
 
                 for (int c = 0; c < _colCount; c++)
                 {
@@ -617,19 +633,19 @@ namespace AcrossLiteToText
 
                         if (_rebusDict.TryGetValue(rebusData, out char ch))
                         {
-                            line += ch;
+                            row += ch;
                         }
                         else
                         {
                             if (hasCircle)
                             {
-                                line += rebusCircleKey;
+                                row += rebusCircleKey;
                                 _rebusDict.Add(rebusData, rebusCircleKey--);
                             }
                             else
                             {
                                 char rebusKey = GetRebusKey(rebusNumber++);
-                                line += rebusKey;
+                                row += rebusKey;
                                 _rebusDict.Add(rebusData, rebusKey);
                             }
                         }
@@ -638,39 +654,22 @@ namespace AcrossLiteToText
                     {
                         // Circles are indicated with lower-case letters
 
-                        line += char.ToLower(_grid[r, c]);
+                        row += char.ToLower(_grid[r, c]);
                     }
                     else if (_isDiagramless && _grid[r, c] == Block)
                     {
-                        line += ":";
+                        row += ":";
                     }
                     else
                     {
-                        line += _grid[r, c];
+                        row += _grid[r, c];
                     }
                 }
 
-                lines.Add(line);
+                rows.Add(row);
             }
 
-            if (_isRebus)
-            {
-                List<string> rebusLines = new List<string>();
-
-                foreach ((string key, char value) in _rebusDict)
-                    rebusLines.Add($"{value}:{key};");
-
-                _rebusCode = string.Join(" ", rebusLines);
-            }
-
-            return lines;
+            return rows;
         }
-
-        /// <summary>
-        /// Local function to convert number to rebus key, '0' to '9' and then 'a' to 'z'.
-        /// </summary>
-        /// <param name="nValue"></param>
-        /// <returns></returns>
-        private static char GetRebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
     }
 }

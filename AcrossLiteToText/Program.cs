@@ -13,7 +13,7 @@ using System.Xml;
 //
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You can see the license in detail here:
@@ -101,7 +101,7 @@ namespace AcrossLiteToText
                 if (string.IsNullOrWhiteSpace(toFolder))
                     toFolder = from;
 
-                // Save all the .puz files in the from folder
+                // Collect the file info for all the .puz files in this folder
 
                 fileList.AddRange(dir.GetFiles("*.puz"));
             }
@@ -115,20 +115,14 @@ namespace AcrossLiteToText
             }
 
             // Make sure toFolder directory exists
+            // Don't try to create the folder in case it was a typo or other mistake.
 
             if (!string.IsNullOrEmpty(toFolder) && !Directory.Exists(toFolder))
             {
                 if (!Directory.Exists(toFolder))
                 {
-                    try
-                    {
-                        Directory.CreateDirectory(toFolder);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"ERROR: Cannot create folder {toFolder} : {ex.Message}");
-                        return;
-                    }
+                    Console.WriteLine($"ERROR: folder {toFolder} does not exist.");
+                    return;
                 }
             }
 
