@@ -171,8 +171,8 @@ namespace AcrossLiteToText
 
                     // Write the text to a file
 
-                    string textFileName = @$"{toFolder}\{fi.Name.Replace(".puz", ".txt")}";
-                    File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
+            string textFileName = @$"{toFolder}{Path.DirectorySeparatorChar}{puzFile.Name.Replace(".puz", ".txt")}";
+            File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
 
                     // Write the text to console
 
