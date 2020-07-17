@@ -39,9 +39,7 @@ namespace AcrossLiteToText
             string from;                // filename or directory of .puz file(s)
             string toFolder = null;     // directory to create converted .txt file(s)
 
-            //List<string> fileNames = new List<string>();    // list of files to convert
-
-            List<FileInfo> fileList = new List<FileInfo>();
+            List<FileInfo> fileList = new List<FileInfo>();     // files to convert
 
             // Get the names of the input file or folder, and the output folder.
 
@@ -149,7 +147,7 @@ namespace AcrossLiteToText
                 {
                     Console.WriteLine();
                     Console.WriteLine();
-                    Console.WriteLine($"********** CONVERTING: {fi.FullName} **********");
+                    Console.WriteLine($"Converting {fi.FullName}");
                     Console.WriteLine();
 
                     if (!fi.Name.EndsWith(".puz"))
@@ -160,55 +158,47 @@ namespace AcrossLiteToText
 
                     Puzzle puz = new Puzzle(File.ReadAllBytes(fi.FullName));
 
+                    // Use this to output text file to console: Console.Write(string.Join(Environment.NewLine, puz.Text));
+                    // Or use this to output XML file to console: puz.Xml.Save(Console.Out); Console.WriteLine();
+
                     if (!puz.IsValid)
                     {
-                        Console.WriteLine($"ERROR: {fi.Name} appears to be an invalid Across Lite file");
+                        Console.WriteLine($"\tERROR: {fi.Name} appears to be an invalid Across Lite file");
                         continue;
                     }
 
                     if (puz.IsLocked)
-                        Console.WriteLine($"WARNING: {fi.Name} appears to be locked");
+                        Console.WriteLine($"\tWARNING: {fi.Name} appears to be locked");
 
-                    // Write the text to a file
+                    // TEXT files
 
                     string textFileName = @$"{toFolder}{Path.DirectorySeparatorChar}{fi.Name.Replace(".puz", ".txt")}";
+                    bool bTextFileExisted = File.Exists(textFileName);
                     File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
 
-                    // Write the text to console
+                    Console.WriteLine(File.Exists(textFileName)
+                        ? $"\t{textFileName} {(bTextFileExisted ? "replaced" : "created")}"
+                        : $"\tERROR: could not create {textFileName}");
 
-                    Console.Write(string.Join(Environment.NewLine, puz.Text));
-                    Console.WriteLine();
-
-                    // Write the XML to a file
+                    // XML files
 
                     string xmlFileName = textFileName.Replace(".txt", ".xml");
                     XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
                     XmlWriter writer = XmlWriter.Create(xmlFileName, settings);
+
+                    bool bXmlFileExisted = File.Exists(xmlFileName);
                     puz.Xml.Save(writer);
-                    Console.WriteLine();
 
-                    // And to the console as well
-
-                    puz.Xml.Save(Console.Out);
-                    Console.WriteLine();
+                    Console.WriteLine(File.Exists(xmlFileName)
+                        ? $"\t{xmlFileName} {(bXmlFileExisted ? "replaced" : "created")}"
+                        : $"\tERROR: could not create {xmlFileName}");
                 }
-
-                // Final stats
-
-                Console.WriteLine();
-                Console.WriteLine("==============");
-                Console.WriteLine();
-                Console.WriteLine($"Number of files converted: {fileList.Count}");
-                Console.WriteLine();
-
-                foreach (FileInfo fileInfo in fileList)
-                    Console.WriteLine($"\t{fileInfo.FullName}");
             }
         }
 
 
         /// <summary>
-        /// Usage information if no input found
+        /// Usage information
         /// </summary>
         private static void DisplayUsage()
         {
@@ -225,7 +215,10 @@ namespace AcrossLiteToText
             Console.WriteLine("PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.");
             Console.WriteLine("You need permission from the rights holders for most public and for all commercial uses.");
             Console.WriteLine();
+            Console.WriteLine("See https://github.com/jahorne/AcrossLiteToText for more info.");
+            Console.WriteLine();
             Console.WriteLine("This program (c) 2020 by Jim Horne, licensed under GNU General Public License v3.0.");
+            Console.WriteLine();
             Console.WriteLine();
         }
     }

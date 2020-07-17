@@ -16,11 +16,11 @@ namespace AcrossLiteToText
     public class Clue
     {
         [XmlAttribute]
-        public int Number;
-        [XmlAttribute]
-        public string Text;
-        [XmlAttribute]
         public string Answer;
+        [XmlAttribute]
+        public int Number;
+        [XmlText]
+        public string Text;
     }
 
     public class Row

@@ -48,8 +48,10 @@ namespace AcrossLiteToText
         public bool IsValid { get; }    // true if file successfully parsed
         public bool IsLocked { get; }   // true if the Across Lite puzzle is locked
 
+        // Properties Text and Xml return the parsed data in the requested format
+
         public IEnumerable<string> Text => TextVersion();
-        public XmlDocument Xml => XmlDoc();
+        public XmlDocument Xml => XmlVersion();
 
         // Across Lite encodes non-ASCII characters in ANSI, in particular,
         // the version of ANSI defined by codepage 1252, specified as ISO-8859-1.
@@ -80,7 +82,13 @@ namespace AcrossLiteToText
         private string _rebusCode;          // as found in the Across Lite file
         private int[,] _rebusKeys;          // 0 means no rebus in this square, otherwise it's the dictionary key
 
-        private Dictionary<int, string> _rebusLookup = new Dictionary<int, string>();
+        // Dictionary to map integer identifiers in the Across Lite file to their associated replacement strings
+
+        private Dictionary<int, string> _crackedRebusCode = new Dictionary<int, string>();
+
+        // Dictionary to map strings used in the output files to the characters in the <GRID> rows
+
+        private readonly Dictionary<string, char> _rebusDict = new Dictionary<string, char>();
 
 
         /// <summary>
@@ -286,7 +294,7 @@ namespace AcrossLiteToText
             while (c < _colCount && _grid[r, c] != '.')
             {
                 if (_isRebus && _rebusKeys[r, c] > 0)
-                    ans += _rebusLookup[_rebusKeys[r, c]];
+                    ans += _crackedRebusCode[_rebusKeys[r, c]];
                 else
                     ans += _grid[r, c];
 
@@ -310,7 +318,7 @@ namespace AcrossLiteToText
             while (r < _rowCount && _grid[r, c] != '.')
             {
                 if (_isRebus && _rebusKeys[r, c] > 0)
-                    ans += _rebusLookup[_rebusKeys[r, c]];
+                    ans += _crackedRebusCode[_rebusKeys[r, c]];
                 else
                     ans += _grid[r, c];
 
@@ -428,7 +436,7 @@ namespace AcrossLiteToText
                     while (b[n] != 0)
                         sb.Append((char) b[n++]);
 
-                    _rebusLookup = CrackRebusCode(sb.ToString());
+                    _crackedRebusCode = CrackRebusCode(sb.ToString());
                 }
             }
 
@@ -487,7 +495,7 @@ namespace AcrossLiteToText
 
             // Output the grid
 
-            lines = GetGridLines(bIncludeTab: true, out Dictionary<string, char> rebusDict);
+            lines.AddRange(GetGridLines());
 
             // <REBUS> indicates circles or true rebus strings.
             // MARK: means squares with lower-case letters should be circled.
@@ -499,7 +507,7 @@ namespace AcrossLiteToText
                 if (_hasCircles)
                     lines.Add("MARK;");
 
-                lines.AddRange(rebusDict.Select(r => $"{r.Value}:{r.Key}"));
+                lines.AddRange(_rebusDict.Select(r => $"{r.Value}:{r.Key}"));
             }
 
             // Clues -- list tuples are <clue number, clue text, answer>. Only Item2 (answer) is needed here.
@@ -527,7 +535,7 @@ namespace AcrossLiteToText
         /// A variable of type Crossword is filled, and can then be serialized.
         /// </summary>
         /// <returns></returns>
-        private XmlDocument XmlDoc()
+        private XmlDocument XmlVersion()
         {
             Crossword puzData = new Crossword
             {
@@ -546,7 +554,7 @@ namespace AcrossLiteToText
 
             // Fill the grid, a row at a time
 
-            foreach (string line in GetGridLines(bIncludeTab: false, out _))
+            foreach (string line in GetGridLines(bIncludeTab: false))
                 puzData.Grid.Add(new Row { RowText = line });
 
             // Clues
@@ -583,15 +591,13 @@ namespace AcrossLiteToText
         }
 
 
-        private List<string> GetGridLines(bool bIncludeTab, out Dictionary<string, char> rebusDict)
+        private List<string> GetGridLines(bool bIncludeTab = true)
         {
             List<string> lines = new List<string>();
 
             int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
             char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
             
-            rebusDict = new Dictionary<string, char>();     // rebus keys and associated strings
-
             for (int r = 0; r < _rowCount; r++)
             {
                 string line = bIncludeTab ? "\t" : string.Empty;
@@ -607,9 +613,9 @@ namespace AcrossLiteToText
                         // Otherwise, use increasing numbers for standard rebus squares,
                         // or decreasing lower-case letters for rebus squares that also have circles.
 
-                        string rebusData = $"{_rebusLookup[_rebusKeys[r, c]]}:{_grid[r, c]}";
+                        string rebusData = $"{_crackedRebusCode[_rebusKeys[r, c]]}:{_grid[r, c]}";
 
-                        if (rebusDict.TryGetValue(rebusData, out char ch))
+                        if (_rebusDict.TryGetValue(rebusData, out char ch))
                         {
                             line += ch;
                         }
@@ -618,13 +624,13 @@ namespace AcrossLiteToText
                             if (hasCircle)
                             {
                                 line += rebusCircleKey;
-                                rebusDict.Add(rebusData, rebusCircleKey--);
+                                _rebusDict.Add(rebusData, rebusCircleKey--);
                             }
                             else
                             {
                                 char rebusKey = GetRebusKey(rebusNumber++);
                                 line += rebusKey;
-                                rebusDict.Add(rebusData, rebusKey);
+                                _rebusDict.Add(rebusData, rebusKey);
                             }
                         }
                     }
@@ -651,7 +657,7 @@ namespace AcrossLiteToText
             {
                 List<string> rebusLines = new List<string>();
 
-                foreach ((string key, char value) in rebusDict)
+                foreach ((string key, char value) in _rebusDict)
                     rebusLines.Add($"{value}:{key};");
 
                 _rebusCode = string.Join(" ", rebusLines);
