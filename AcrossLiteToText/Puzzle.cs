@@ -83,8 +83,6 @@ namespace AcrossLiteToText
         private Dictionary<int, string> _rebusLookup = new Dictionary<int, string>();
 
 
-
-
         /// <summary>
         /// Constructor takes a byte array of the .puz file contents.
         /// </summary>
@@ -331,8 +329,8 @@ namespace AcrossLiteToText
         /// <returns>true if at least one circle was found</returns>
         private bool ParseCircles(IReadOnlyList<byte> b, int n)
         {
-            const string marker = "GEXT"; // marks the start of the circle data
-            bool found = false; // assume none found
+            const string marker = "GEXT";   // marks the start of the circle data
+            bool found = false;             // assume none found
 
             // Search for marker that indicates start of circle data
 
@@ -340,19 +338,19 @@ namespace AcrossLiteToText
             {
                 if (b[n] == marker[0] && b[n + 1] == marker[1] && b[n + 2] == marker[2] && b[n + 3] == marker[3])
                 {
-                    found = true; // need to check later
+                    found = true;           // need to check later
                     break;
                 }
 
                 n++;
             }
 
-            if (found) // if marker found (might be bogus)
+            if (found)              // if marker found (might be bogus)
             {
-                n += 8; // offset from GEXT
-                found = false; // reset
+                n += 8;             // offset from GEXT
+                found = false;      // reset
 
-                _hasCircle = new bool[_rowCount, _colCount]; // array to store circle data
+                _hasCircle = new bool[_rowCount, _colCount];    // array to store circle data
 
                 for (int r = 0; r < _rowCount; r++)
                 {
@@ -451,16 +449,14 @@ namespace AcrossLiteToText
 
             string[] rawParts = str.Trim().Split(';');
 
-            // Key is number before colon plus offset (1)
+            // -1 below because we ignore the empty part from the trailing ";"
 
-            int partsCount = rawParts.Length - 1; // ignore part with trailing ';'
-
-            for (int n = 0; n < partsCount; n++)
+            for (int n = 0; n < rawParts.Length - 1; n++)
             {
                 string rebusData = rawParts[n];
                 string[] rebusParts = rebusData.Split(':');
                 int nKey = Convert.ToInt32(rebusParts[0]);
-                dict.Add(nKey + 1, rebusParts[1]);
+                dict.Add(nKey + 1, rebusParts[1]);              // Key is number before colon plus offset (1)
             }
 
             return dict;
@@ -491,68 +487,7 @@ namespace AcrossLiteToText
 
             // Output the grid
 
-            // Usually this just means output rows in _grid, one per line but circles
-            // and rebus squares have special handling.
-
-            Dictionary<string, char> rebusDict = new Dictionary<string, char>(); // rebus keys and associated strings
-
-            int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
-            char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
-
-            for (int r = 0; r < _rowCount; r++)
-            {
-                string line = "\t";     // each row starts a new line
-
-                for (int c = 0; c < _colCount; c++)
-                {
-                    bool hasRebus = _isRebus && _rebusKeys[r, c] != 0;  // true if this square has a rebus
-                    bool hasCircle = _hasCircles && _hasCircle[r, c];   // true if this square has a circle
-
-                    if (hasRebus)
-                    {
-                        // Look for existing rebus element, and reuse that same key if found.
-                        // Otherwise, use increasing numbers for standard rebus squares,
-                        // or decreasing lower-case letters for rebus squares that also have circles.
-
-                        string rebusData = $"{_rebusLookup[_rebusKeys[r, c]]}:{_grid[r, c]}";
-
-                        if (rebusDict.TryGetValue(rebusData, out char ch))
-                        {
-                            line += ch;
-                        }
-                        else
-                        {
-                            if (hasCircle)
-                            {
-                                line += rebusCircleKey;
-                                rebusDict.Add(rebusData, rebusCircleKey--);
-                            }
-                            else
-                            {
-                                char rebusKey = GetRebusKey(rebusNumber++);
-                                line += rebusKey;
-                                rebusDict.Add(rebusData, rebusKey);
-                            }
-                        }
-                    }
-                    else if (hasCircle)
-                    {
-                        // Circles are indicated with lower-case letters
-
-                        line += char.ToLower(_grid[r, c]);
-                    }
-                    else if (_isDiagramless && _grid[r, c] == Block)
-                    {
-                        line += ":";
-                    }
-                    else
-                    {
-                        line += _grid[r, c];
-                    }
-                }
-
-                lines.Add(line);
-            }
+            lines = GetGridLines(bIncludeTab: true, out Dictionary<string, char> rebusDict);
 
             // <REBUS> indicates circles or true rebus strings.
             // MARK: means squares with lower-case letters should be circled.
@@ -567,7 +502,7 @@ namespace AcrossLiteToText
                 lines.AddRange(rebusDict.Select(r => $"{r.Value}:{r.Key}"));
             }
 
-            // Clues
+            // Clues -- list tuples are <clue number, clue text, answer>. Only Item2 (answer) is needed here.
 
             lines.Add("<ACROSS>");
             lines.AddRange(_acrossClueList.Select(i => $"\t{i.Item2}"));
@@ -584,26 +519,16 @@ namespace AcrossLiteToText
             }
 
             return lines;
-
-
-
-            
         }
 
-        static char GetRebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
-
-
+ 
         /// <summary>
         /// Returns an XML Document for writing to a file or the console.
-        /// A Crossword variable is filled, and can then be serialized.
+        /// A variable of type Crossword is filled, and can then be serialized.
         /// </summary>
         /// <returns></returns>
         private XmlDocument XmlDoc()
         {
-            // lines.AddRange(rebusDict.Select(r => $"{r.Value}:{r.Key}"));
-
-            
-
             Crossword puzData = new Crossword
             {
                 Author = _author,
@@ -621,17 +546,7 @@ namespace AcrossLiteToText
 
             // Fill the grid, a row at a time
 
-            //for (int r = 0; r < _rowCount; r++)
-            //{
-            //    string row = string.Empty;
-
-            //    for (int c = 0; c < _colCount; c++)
-            //        row += _hasCircles && _hasCircle[r, c] ? char.ToLower(_grid[r, c]) : _grid[r, c];
-
-            //    puzData.Grid.Add(new Row { RowText = row });
-            //}
-
-            foreach (string line in GetGridLines())
+            foreach (string line in GetGridLines(bIncludeTab: false, out _))
                 puzData.Grid.Add(new Row { RowText = line });
 
             // Clues
@@ -668,14 +583,14 @@ namespace AcrossLiteToText
         }
 
 
-
-        List<string> GetGridLines(bool bIncludeTab = false)
+        private List<string> GetGridLines(bool bIncludeTab, out Dictionary<string, char> rebusDict)
         {
-            Dictionary<string, char> rebusDict = new Dictionary<string, char>(); // rebus keys and associated strings
             List<string> lines = new List<string>();
 
             int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
             char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
+            
+            rebusDict = new Dictionary<string, char>();     // rebus keys and associated strings
 
             for (int r = 0; r < _rowCount; r++)
             {
@@ -732,15 +647,24 @@ namespace AcrossLiteToText
                 lines.Add(line);
             }
 
-            // lines.AddRange(rebusDict.Select(r => $"{r.Value}:{r.Key}"));
+            if (_isRebus)
+            {
+                List<string> rebusLines = new List<string>();
 
-            _rebusCode = string.Empty;
+                foreach ((string key, char value) in rebusDict)
+                    rebusLines.Add($"{value}:{key};");
 
-            foreach ((string key, char value) in rebusDict)
-                _rebusCode += $"{value}:{key};";
-
+                _rebusCode = string.Join(" ", rebusLines);
+            }
 
             return lines;
         }
+
+        /// <summary>
+        /// Local function to convert number to rebus key, '0' to '9' and then 'a' to 'z'.
+        /// </summary>
+        /// <param name="nValue"></param>
+        /// <returns></returns>
+        private static char GetRebusKey(int nValue) => nValue < 10 ? (char)(nValue + '0') : (char)(nValue + 'a' - 10);
     }
 }
