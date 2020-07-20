@@ -61,7 +61,10 @@ namespace AcrossLiteToText
                     toFolder = args[1];
 
                 if (args.Length > 2)
-                    createXml = true;   // XML file included
+                {
+                    createXml = true;           // XML file included
+                    xmlFileName = args[2];
+                }
             }
 
             // If we didn't get a from file or folder, bail.
@@ -261,14 +264,16 @@ namespace AcrossLiteToText
         private static void DisplayUsage()
         {
             Console.WriteLine();
-            Console.WriteLine("AcrossLiteToText converts Across Lite .puz files to text files.");
+            Console.WriteLine("AcrossLiteToText converts Across Lite .puz files to text and XML files.");
             Console.WriteLine();
-            Console.WriteLine("Specify a file or folder. Examples:");
+            Console.WriteLine("General usage pattern: \tAcrossLiteToText from to xmlFile");
+            Console.WriteLine("All parameters are optional. Examples:");
             Console.WriteLine();
             Console.WriteLine("AcrossLiteToText filename.puz    (convert single file)");
             Console.WriteLine("AcrossLiteToText foldername      (convert all .puz files in folder)");
             Console.WriteLine("AcrossLiteToText .               (use . for current folder)");
-            Console.WriteLine("AcrossLiteToText in out          (specify input and output folders");
+            Console.WriteLine("AcrossLiteToText in out          (specify input and output folders)");
+            Console.WriteLine("AcrossLiteToText in out xmlFile  (all XML data packaged into single file)");
             Console.WriteLine();
             Console.WriteLine("PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.");
             Console.WriteLine("You need permission from the rights holders for most public and for all commercial uses.");
