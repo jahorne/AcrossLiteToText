@@ -4,7 +4,7 @@
 
 This .Net Core console application converts one or more Across Lite .puz files into their text file equivalents. As of version 2.0, XML files which contain more information are also generated. [See the wiki](https://github.com/jahorne/AcrossLiteToText/wiki "See the wiki") for more info.
 
-Compile it to run on Windows, Macs, or Unix computers.
+Included binaries run on Windows, OS/X, or Unix computers.
 
 You can edit this project here on the web, or with [Visual Studio or Visual Studio Code](https://visualstudio.microsoft.com/), or using your favorite editor. I recommend the free version of Visual Studio. (Add the GitHub extension!)
 
