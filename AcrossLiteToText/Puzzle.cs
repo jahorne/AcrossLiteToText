@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
-using System.Xml.XPath;
 
 
 // Copyright (C) 2020, Jim Horne
@@ -36,7 +36,7 @@ namespace AcrossLiteToText
     ///
     /// Create text file: File.WriteAllLines(sTextFileName, puz.Text, puz.AnsiEncoding);
     ///
-    /// Or return a full XmlDocument (includes answers) using puz.Xml
+    /// Or return a Crossword object designed to be serialized to XML
     ///
     /// This code is derived from a similar class in XWord Info.
     /// 
@@ -53,7 +53,8 @@ namespace AcrossLiteToText
         // Properties Text and Xml return the parsed data in the requested format
 
         public IEnumerable<string> Text => TextVersion();
-        public XmlDocument Xml => XmlVersion();
+
+        public Crossword CrosswordObject => CreateCrosswordObject();
 
         // Across Lite encodes non-ASCII characters in ANSI, in particular,
         // the version of ANSI defined by codepage 1252, specified as ISO-8859-1.
@@ -263,7 +264,7 @@ namespace AcrossLiteToText
 
 
             //
-            // NextString() is a LOCAL function so it captures the byte array b and the index i.
+            // NextString() is a LOCAL function that captures the byte array b and the index i.
             //
 
             string NextString()
@@ -538,11 +539,12 @@ namespace AcrossLiteToText
 
  
         /// <summary>
-        /// Returns an XML Document for writing to a file or the console.
-        /// A variable of type Crossword is filled, and can then be serialized.
+        /// Returns an object suitable for directly serializing to XML.
+        /// It does this rather than returning an entire XmlDocument so the caller can optionally
+        /// combine several of these objects into a single XML file.
         /// </summary>
         /// <returns></returns>
-        private XmlDocument XmlVersion()
+        private Crossword CreateCrosswordObject()
         {
             Crossword puzData = new Crossword
             {
@@ -585,29 +587,17 @@ namespace AcrossLiteToText
                 }
             }
 
-            // Go through some hoops just to write a comment at the top of the document
-
-            XmlDocument doc = new XmlDocument();
-            XPathNavigator nav = doc.CreateNavigator();
-
-            using (XmlWriter w = nav.AppendChild())
-            {
-                XmlSerializer ser = new XmlSerializer(typeof(Crossword));
-                ser.Serialize(w, puzData);
-            }
-
-            string comment = $"Generated from AcrossLiteToText on {DateTime.Now.ToUniversalTime()} UTC. See https://github.com/jahorne/AcrossLiteToText";
-
-            XmlComment xmlComment = doc.CreateComment(comment);
-
-            XmlElement root = doc.DocumentElement;
-            doc.InsertBefore(xmlComment, root);
-
-            return doc;
+            return puzData;
         }
 
 
-        private List<string> GetGridRows(bool bIncludeTab = true)
+        /// <summary>
+        /// Returns a list of rows describing the solved grid suitable for both Text and XML representations.
+        /// Results for XML should set bIncludeTab to false.
+        /// </summary>
+        /// <param name="bIncludeTab">tab character at the start of each string for text version</param>
+        /// <returns></returns>
+        private IEnumerable<string> GetGridRows(bool bIncludeTab = true)
         {
             List<string> rows = new List<string>();
 

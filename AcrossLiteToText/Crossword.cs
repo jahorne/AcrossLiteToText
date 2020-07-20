@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.IO;
+using System.Xml;
 using System.Xml.Serialization;
 // ReSharper disable NotAccessedField.Global
 // ReSharper disable CollectionNeverQueried.Global
@@ -23,7 +25,9 @@ using System.Xml.Serialization;
 namespace AcrossLiteToText
 {
     /// <summary>
-    /// Classes to serialize for XML
+    /// Classes to serialize for XML.
+    /// Crossword object defines a single puzzle.
+    /// Crosswords is a Crossword collection.
     /// </summary>
 
     public class Dimensions
@@ -34,12 +38,9 @@ namespace AcrossLiteToText
 
     public class Clue
     {
-        [XmlAttribute]
-        public int Number;
-        [XmlAttribute]
-        public string Answer;
-        [XmlText]
-        public string Text;
+        [XmlAttribute] public int Number;
+        [XmlAttribute] public string Answer;
+        [XmlText] public string Text;
     }
 
     public class Row
@@ -61,5 +62,36 @@ namespace AcrossLiteToText
         public string NotePad;
         public bool HasCircles, IsRebus;
         public List<RebusCode> RebusCodes;
+    }
+
+    public class Crosswords
+    {
+        [XmlElement] public List<Crossword> Crossword;
+    }
+
+
+    /// <summary>
+    /// Convert generic object to XmlDocument.
+    /// Useful for converting Crossword or Crosswords.
+    /// </summary>
+    public static class Utilities
+    {
+        public static XmlDocument SerializeToXmlDocument(object input)
+        {
+            XmlSerializer ser = new XmlSerializer(input.GetType());
+
+            using MemoryStream memStream = new MemoryStream();
+            ser.Serialize(memStream, input);
+
+            memStream.Position = 0;
+
+            XmlReaderSettings settings = new XmlReaderSettings { IgnoreWhitespace = true };
+
+            using XmlReader xtr = XmlReader.Create(memStream, settings);
+            XmlDocument xd = new XmlDocument();
+            xd.Load(xtr);
+
+            return xd;
+        }
     }
 }

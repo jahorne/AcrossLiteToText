@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Xml;
 
@@ -28,7 +29,7 @@ namespace AcrossLiteToText
     /// It's main purpose is to demonstrate the Across Lite binary file parsing, and
     /// text file generation capability, of the associated Puzzle class.
     ///
-    /// Usage:  AcrossLiteToText inputFileOrFolder outputFolder (parameters optional)
+    /// Usage:  AcrossLiteToText inputFileOrFolder outputFolder xmlFilename (parameters optional)
     /// 
     /// </summary>
 
@@ -36,8 +37,11 @@ namespace AcrossLiteToText
     {
         private static void Main(string[] args)
         {
-            string from;                // filename or directory of .puz file(s)
-            string toFolder = null;     // directory to create converted .txt file(s)
+            string from;                        // filename or directory of .puz file(s)
+            string toFolder = null;             // directory to create converted .txt file(s)
+            bool createXml = false;             // will be true if XML file creation requested
+            string xmlFileName = string.Empty;
+            string xmlFilePath = string.Empty;
 
             List<FileInfo> fileList = new List<FileInfo>();     // files to convert
 
@@ -55,6 +59,9 @@ namespace AcrossLiteToText
 
                 if (args.Length > 1)
                     toFolder = args[1];
+
+                if (args.Length > 2)
+                    createXml = true;   // XML file included
             }
 
             // If we didn't get a from file or folder, bail.
@@ -77,7 +84,7 @@ namespace AcrossLiteToText
                 if (string.IsNullOrEmpty(toFolder))
                 {
                     // If toFolder hasn't been set, try to make it the same as the
-                    // folder of the from file. Look for backslash or forward slash.
+                    // folder of the from file. Look for last backslash or forward slash.
 
                     char[] pathSeparators = {'\\', '/'};
                     int index = from.LastIndexOfAny(pathSeparators);
@@ -106,7 +113,7 @@ namespace AcrossLiteToText
                 fileList.AddRange(dir.GetFiles("*.puz"));
             }
 
-            // Couldn't fine a file OR a folder, so bail
+            // Couldn't find a file OR a folder, so bail
 
             else
             {
@@ -126,68 +133,125 @@ namespace AcrossLiteToText
                 }
             }
 
-            // We're ready to convert files
+            // If no XmlFileName specified in args, ask for it.
+
+            if (!createXml)
+            {
+                Console.Write($"XML file name in {toFolder} (or Enter for none): ");
+                xmlFileName = Console.ReadLine();
+                createXml = !string.IsNullOrWhiteSpace(xmlFileName);
+            }
+
+            // If we have an XML file, get the full path and make sure it has the correct extension
+
+            if (createXml)
+            {
+                xmlFilePath = $"{toFolder}{Path.DirectorySeparatorChar}{xmlFileName}";
+
+                if (!xmlFilePath.EndsWith(".xml"))
+                    xmlFilePath += ".xml";
+            }
 
             if (fileList.Count == 0)
             {
                 Console.WriteLine("No Across Lite files found");
+                return;
             }
-            else
+
+            // We're ready to convert files
+
+            // For each fileInfo collected, create a Puzzle object,
+            // write out the Text file, and collect the Crossword object
+            // for serializing to XML.
+
+            List<Crossword> crosswordList = new List<Crossword>();
+
+            foreach (FileInfo fi in fileList)
             {
-                // For each fileInfo collected, create a Puzzle object,
-                // and write out the text and XML files.
+                Console.WriteLine();
+                Console.WriteLine();
+                Console.WriteLine($"Converting {fi.FullName}");
+                Console.WriteLine();
 
-                foreach (FileInfo fi in fileList)
+                if (!fi.Name.EndsWith(".puz"))
                 {
-                    Console.WriteLine();
-                    Console.WriteLine();
-                    Console.WriteLine($"Converting {fi.FullName}");
-                    Console.WriteLine();
-
-                    if (!fi.Name.EndsWith(".puz"))
-                    {
-                        Console.WriteLine($"ERROR: {fi.FullName} is not a correctly named Across Lite puzzle file");
-                        continue;
-                    }
-
-                    Puzzle puz = new Puzzle(File.ReadAllBytes(fi.FullName));
-
-                    // Use this to output text file to console: Console.Write(string.Join(Environment.NewLine, puz.Text));
-                    // Or use this to output XML file to console: puz.Xml.Save(Console.Out); Console.WriteLine();
-
-                    if (!puz.IsValid)
-                    {
-                        Console.WriteLine($"\tERROR: {fi.Name} appears to be an invalid Across Lite file");
-                        continue;
-                    }
-
-                    if (puz.IsLocked)
-                        Console.WriteLine($"\tWARNING: {fi.Name} appears to be locked");
-
-                    // TEXT files
-
-                    string textFileName = @$"{toFolder}{Path.DirectorySeparatorChar}{fi.Name.Replace(".puz", ".txt")}";
-                    bool bTextFileExisted = File.Exists(textFileName);
-                    File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
-
-                    Console.WriteLine(File.Exists(textFileName)
-                        ? $"\t{textFileName} {(bTextFileExisted ? "replaced" : "created")}"
-                        : $"\tERROR: could not create {textFileName}");
-
-                    // XML files
-
-                    string xmlFileName = textFileName.Replace(".txt", ".xml");
-                    XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
-                    XmlWriter writer = XmlWriter.Create(xmlFileName, settings);
-
-                    bool bXmlFileExisted = File.Exists(xmlFileName);
-                    puz.Xml.Save(writer);
-
-                    Console.WriteLine(File.Exists(xmlFileName)
-                        ? $"\t{xmlFileName} {(bXmlFileExisted ? "replaced" : "created")}"
-                        : $"\tERROR: could not create {xmlFileName}");
+                    Console.WriteLine($"ERROR: {fi.FullName} is not a correctly named Across Lite puzzle file");
+                    continue;
                 }
+
+                Puzzle puz = new Puzzle(File.ReadAllBytes(fi.FullName));
+
+                // Use this to output text file to console: Console.Write(string.Join(Environment.NewLine, puz.Text));
+                // Or use this to output XML file to console: puz.Xml.Save(Console.Out); Console.WriteLine();
+
+                if (!puz.IsValid)
+                {
+                    Console.WriteLine($"\tERROR: {fi.Name} appears to be an invalid Across Lite file");
+                    continue;
+                }
+
+                if (puz.IsLocked)
+                    Console.WriteLine($"\tWARNING: {fi.Name} appears to be locked");
+
+                // TEXT files
+
+                string textFileName = @$"{toFolder}{Path.DirectorySeparatorChar}{fi.Name.Replace(".puz", ".txt")}";
+                bool bTextFileExisted = File.Exists(textFileName);
+                File.WriteAllLines(textFileName, puz.Text, puz.AnsiEncoding);
+
+                Console.WriteLine(File.Exists(textFileName)
+                    ? $"\t{textFileName} {(bTextFileExisted ? "replaced" : "created")}"
+                    : $"\tERROR: could not create {textFileName}");
+
+                // Save the Crossword object to serialize it to XML.
+
+                if (createXml)
+                    crosswordList.Add(puz.CrosswordObject);
             }
+
+            // XML output. All results are in a single XML file.
+
+            if (!createXml || crosswordList.Count == 0)
+                return;
+
+            XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
+            string comment = $"Generated from AcrossLiteToText on {DateTime.Now}. See https://github.com/jahorne/AcrossLiteToText";
+
+            bool bXmlFileExisted = File.Exists(xmlFilePath);
+            XmlWriter writer = XmlWriter.Create(xmlFilePath, settings);
+
+            Console.WriteLine();
+            Console.WriteLine("XML file");
+
+            // If exactly one puzzle is found, create an XML file with a single <Crossword> node.
+
+            if (crosswordList.Count == 1)
+            {
+                XmlDocument doc = Utilities.SerializeToXmlDocument(crosswordList.First());
+                XmlComment xmlComment = doc.CreateComment(comment);
+                doc.InsertBefore(xmlComment, doc.DocumentElement);
+                doc.Save(writer);
+            }
+
+            // If more than one puzzle is found, create a single XML file with one <Crosswords>
+            // node, and a child <Crossword> node for each puzzle.
+
+            else if (crosswordList.Count > 1)
+            {
+                Crosswords combinedList = new Crosswords { Crossword = new List<Crossword>() };
+
+                foreach (Crossword crossword in crosswordList)
+                    combinedList.Crossword.Add(crossword);
+
+                XmlDocument doc = Utilities.SerializeToXmlDocument(combinedList);
+                XmlComment xmlComment = doc.CreateComment(comment);
+                doc.InsertBefore(xmlComment, doc.DocumentElement);
+                doc.Save(writer);
+            }
+
+            Console.WriteLine(File.Exists(xmlFilePath)
+                ? $"\t{xmlFilePath} {(bXmlFileExisted ? "replaced" : "created")}"
+                : $"\tERROR: could not create {xmlFilePath}");
         }
 
 
