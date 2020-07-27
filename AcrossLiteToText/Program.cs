@@ -252,6 +252,8 @@ namespace AcrossLiteToText
                 doc.Save(writer);
             }
 
+            writer.Close();
+
             Console.WriteLine(File.Exists(xmlFilePath)
                 ? $"\t{xmlFilePath} {(bXmlFileExisted ? "replaced" : "created")}"
                 : $"\tERROR: could not create {xmlFilePath}");
