@@ -38,8 +38,8 @@ namespace AcrossLiteToText
 
     public class Clue
     {
-        [XmlAttribute] public int Number;
-        [XmlAttribute] public string Answer;
+        [XmlAttribute] public int Num;
+        [XmlAttribute] public string Ans;
         [XmlText] public string Text;
     }
 

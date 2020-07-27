@@ -569,12 +569,12 @@ namespace AcrossLiteToText
 
             foreach ((int number, string text, string answer) in _acrossClueList)
             {
-                puzData.Across.Add(new Clue { Number = number, Text = text, Answer = answer });
+                puzData.Across.Add(new Clue { Num = number, Text = text, Ans = answer });
             }
 
             foreach ((int number, string text, string answer) in _downClueList)
             {
-                puzData.Down.Add(new Clue { Number = number, Text = text, Answer = answer });
+                puzData.Down.Add(new Clue { Num = number, Text = text, Ans = answer });
             }
 
             if (_isRebus)
