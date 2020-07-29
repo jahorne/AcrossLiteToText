@@ -218,7 +218,8 @@ namespace AcrossLiteToText
                 return;
 
             XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
-            string comment = $"Generated from AcrossLiteToText on {DateTime.Now}. See https://github.com/jahorne/AcrossLiteToText";
+            string comment = $"Generated from AcrossLiteToText on {DateTime.Now}. See https://github.com/jahorne/AcrossLiteToText.";
+            string comment2 = $"Format is based on XPF 2.0 described at https://www.xwordinfo.com/XPF.";
 
             bool bXmlFileExisted = File.Exists(xmlFilePath);
             XmlWriter writer = XmlWriter.Create(xmlFilePath, settings);
@@ -228,12 +229,12 @@ namespace AcrossLiteToText
 
             // If exactly one puzzle is found, create an XML file with a single <Crossword> node.
 
+            XmlDocument doc;
+
             if (crosswordList.Count == 1)
             {
-                XmlDocument doc = Utilities.SerializeToXmlDocument(crosswordList.First());
-                XmlComment xmlComment = doc.CreateComment(comment);
-                doc.InsertBefore(xmlComment, doc.DocumentElement);
-                doc.Save(writer);
+                doc = Utilities.SerializeToXmlDocument(crosswordList.First());
+                
             }
 
             // If more than one puzzle is found, create a single XML file with one <Crosswords>
@@ -246,11 +247,19 @@ namespace AcrossLiteToText
                 foreach (Crossword crossword in crosswordList)
                     combinedList.Crossword.Add(crossword);
 
-                XmlDocument doc = Utilities.SerializeToXmlDocument(combinedList);
-                XmlComment xmlComment = doc.CreateComment(comment);
-                doc.InsertBefore(xmlComment, doc.DocumentElement);
-                doc.Save(writer);
+                doc = Utilities.SerializeToXmlDocument(combinedList);
             }
+            else
+            {
+                writer.Close();
+                return;
+            }
+
+            XmlComment xmlComment = doc.CreateComment(comment);
+            doc.InsertBefore(xmlComment, doc.DocumentElement);
+            XmlComment xmlComment2 = doc.CreateComment(comment2);
+            doc.InsertBefore(xmlComment2, doc.DocumentElement);
+            doc.Save(writer);
 
             writer.Close();
 

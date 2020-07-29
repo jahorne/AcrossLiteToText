@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
-using System.Xml;
-using System.Xml.Serialization;
 
 
 // Copyright (C) 2020, Jim Horne
@@ -21,7 +18,6 @@ using System.Xml.Serialization;
 //
 // You can see the license in detail here:
 // https://github.com/jahorne/AcrossLiteToText/blob/master/LICENSE
-
 
 namespace AcrossLiteToText
 {
@@ -162,7 +158,7 @@ namespace AcrossLiteToText
             {
                 for (int c = 0; c < _colCount; c++)
                 {
-                    char cLetter = (char) b[i++];
+                    char cLetter = (char)b[i++];
 
                     if (cLetter == ':')
                     {
@@ -442,7 +438,7 @@ namespace AcrossLiteToText
                     StringBuilder sb = new StringBuilder();
 
                     while (b[n] != 0)
-                        sb.Append((char) b[n++]);
+                        sb.Append((char)b[n++]);
 
                     _crackedRebusCode = CrackRebusCode(sb.ToString());
                 }
@@ -537,7 +533,7 @@ namespace AcrossLiteToText
             return lines;
         }
 
- 
+
         /// <summary>
         /// Returns an object suitable for directly serializing to XML.
         /// It does this rather than returning an entire XmlDocument so the caller can optionally
@@ -556,8 +552,7 @@ namespace AcrossLiteToText
                 NotePad = string.IsNullOrWhiteSpace(_notepad) ? null : _notepad,
                 Across = new List<Clue>(),
                 Down = new List<Clue>(),
-                HasCircles = _hasCircles,
-                IsRebus = _isRebus,
+                HasCircles = _hasCircles
             };
 
             // Fill the grid, a row at a time
@@ -577,14 +572,12 @@ namespace AcrossLiteToText
                 puzData.Down.Add(new Clue { Num = number, Text = text, Ans = answer });
             }
 
+            // Rebus information
+
             if (_isRebus)
             {
-                puzData.RebusCodes = new List<RebusCode>();
-
-                foreach ((string key, char value) in _rebusDict)
-                {
-                    puzData.RebusCodes.Add(new RebusCode { CodeText = $"{value}:{key};" });
-                }
+                List<string> codes = _rebusDict.Select(i => $"{i.Value}:{i.Key}").ToList();
+                puzData.IsRebus = new Rebus { IsRebus = true, Codes = string.Join(";", codes) };
             }
 
             return puzData;
@@ -603,7 +596,7 @@ namespace AcrossLiteToText
 
             int rebusNumber = 0;        // standard rebus uses numbers, starting here and increasing
             char rebusCircleKey = 'z';  // circles with rebus uses letters, starting here and going backwards to reduce conflict odds
-            
+
             for (int r = 0; r < _rowCount; r++)
             {
                 string row = bIncludeTab ? "\t" : string.Empty;

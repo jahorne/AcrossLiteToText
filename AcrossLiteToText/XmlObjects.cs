@@ -21,7 +21,6 @@ using System.Xml.Serialization;
 // You can see the license in detail here:
 // https://github.com/jahorne/AcrossLiteToText/blob/master/LICENSE
 
-
 namespace AcrossLiteToText
 {
     /// <summary>
@@ -47,10 +46,10 @@ namespace AcrossLiteToText
     {
         [XmlText] public string RowText;
     }
-
-    public class RebusCode
+    public class Rebus
     {
-        [XmlText] public string CodeText;
+        [XmlAttribute] public string Codes;
+        [XmlText] public bool IsRebus;
     }
 
     public class Crossword
@@ -60,8 +59,8 @@ namespace AcrossLiteToText
         public List<Row> Grid;
         public List<Clue> Across, Down;
         public string NotePad;
-        public bool HasCircles, IsRebus;
-        public List<RebusCode> RebusCodes;
+        public bool HasCircles;
+        public Rebus IsRebus;
     }
 
     public class Crosswords
