@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml;
-using Newtonsoft.Json;
 
 // Copyright (C) 2020, Jim Horne
 //
@@ -42,8 +42,8 @@ namespace AcrossLiteToText
             string toFolder = null;             // directory to create converted .txt file(s)
             bool createFile = false;             // will be true if file creation requested
             string targetFileName = string.Empty;
-            string outputFilePath = string.Empty;
-            Boolean xmlFormat = true;
+            string outputXmlPath = string.Empty;
+            string outputJsonPath = string.Empty;
 
             List<FileInfo> fileList = new List<FileInfo>();     // files to convert
 
@@ -68,11 +68,6 @@ namespace AcrossLiteToText
                     targetFileName = args[2];
                 }
 
-                //If JSON format requested
-                if (args.Length > 3 && args[3].ToLower().Equals("json"))
-                {
-                    xmlFormat = false;
-                }
             }
 
             // If we didn't get a from file or folder, bail.
@@ -97,7 +92,7 @@ namespace AcrossLiteToText
                     // If toFolder hasn't been set, try to make it the same as the
                     // folder of the from file. Look for last backslash or forward slash.
 
-                    char[] pathSeparators = {'\\', '/'};
+                    char[] pathSeparators = { '\\', '/' };
                     int index = from.LastIndexOfAny(pathSeparators);
                     toFolder = index == -1 ? "." : from.Substring(0, index);
                 }
@@ -153,30 +148,25 @@ namespace AcrossLiteToText
                 createFile = !string.IsNullOrWhiteSpace(targetFileName);
             }
 
-            // If no file type specified in args, ask for it.
-
-            if (args.Length < 4 || string.IsNullOrEmpty(args[3]))
-            {
-                Console.Write($"Select an output file type: 'XML' or 'JSON' (Default is XML): ");
-                string formatChoice = Console.ReadLine();
-                xmlFormat = string.IsNullOrEmpty(formatChoice) || !"json".Equals(formatChoice.ToLower());   //Default to XML unless 'json' is specifically requested
-                createFile = !string.IsNullOrWhiteSpace(targetFileName);
-            }
-
-            // If we have a file, get the full path and make sure it has the correct extension
+            // If we have a file, get the full path and strip a given xml/json extension, apply the filename for both
 
             if (createFile)
             {
-                outputFilePath = $"{toFolder}{Path.DirectorySeparatorChar}{targetFileName}";
+                outputXmlPath = $"{toFolder}{Path.DirectorySeparatorChar}{targetFileName}";
 
-                if (xmlFormat) { 
-                    if (!outputFilePath.EndsWith(".xml"))
-                        outputFilePath += ".xml";
-                } else
+                if (outputXmlPath.EndsWith(".xml"))
+                    outputJsonPath = outputXmlPath.Substring(outputXmlPath.Length - 4) + ".json";
+                else if (outputXmlPath.EndsWith(".json"))
                 {
-                    if (!outputFilePath.EndsWith(".json"))
-                        outputFilePath += ".json";
+                    outputJsonPath = outputXmlPath;
+                    outputXmlPath = outputXmlPath.Substring(outputXmlPath.Length - 5) + ".json";
                 }
+                else
+                {
+                    outputJsonPath = outputXmlPath + ".json";
+                    outputXmlPath = outputXmlPath + ".xml";
+                }
+
             }
 
             if (fileList.Count == 0)
@@ -239,44 +229,21 @@ namespace AcrossLiteToText
             if (!createFile || crosswordList.Count == 0)
                 return;
 
-            if(!xmlFormat)  //If JSON format output
+            //Write to JSON file
+
+            File.WriteAllText(outputJsonPath, JsonSerializer.Serialize(crosswordList, new JsonSerializerOptions { WriteIndented = true }));
+
+            if (File.Exists(outputXmlPath))
             {
-                int count = 1;
-                List<String> created = new List<String>();
-                List<String> existed = new List<String>();
-                foreach(Crossword crossword in crosswordList) {
-                    if (File.Exists(outputFilePath))
-                    {
-                        existed.Add(outputFilePath);
-                    } else
-                    {
-                        created.Add(outputFilePath);
-                    }
-                    File.WriteAllText(outputFilePath, JsonConvert.SerializeObject(crossword, Newtonsoft.Json.Formatting.Indented));
-                    outputFilePath = outputFilePath.Remove(outputFilePath.Length - 5) + count + ".json";    //Increment file name, output one crossword per JSON file
-                    count++;
-                }
-
-                if(created.Count != 0)
-                {
-                    Console.WriteLine("JSON files created: ");
-                    foreach(String str in created) {
-                        Console.WriteLine(str);
-                    }
-                }
-
-                if (existed.Count != 0)
-                {
-                    Console.WriteLine("JSON files created: ");
-                    foreach (String str in existed)
-                    {
-                        Console.WriteLine(str);
-                    }
-                }
-
-                return;
-
+                Console.WriteLine("JSON files replaced: ");
+            } else
+            {
+                Console.WriteLine("JSON files created: ");
             }
+
+
+            return;
+
 
             // XML output. All results are in a single XML file.
 
@@ -284,8 +251,8 @@ namespace AcrossLiteToText
             string comment = $"Generated from AcrossLiteToText on {DateTime.Now}. See https://github.com/jahorne/AcrossLiteToText.";
             string comment2 = $"Format is based on XPF 2.0 described at https://www.xwordinfo.com/XPF.";
 
-            bool bXmlFileExisted = File.Exists(outputFilePath);
-            XmlWriter writer = XmlWriter.Create(outputFilePath, settings);
+            bool bXmlFileExisted = File.Exists(outputXmlPath);
+            XmlWriter writer = XmlWriter.Create(outputXmlPath, settings);
 
             Console.WriteLine();
             Console.WriteLine("XML file");
@@ -327,9 +294,9 @@ namespace AcrossLiteToText
             writer.Close();
 
 
-            Console.WriteLine(File.Exists(outputFilePath)
-                ? $"\t{outputFilePath} {(bXmlFileExisted ? "replaced" : "created")}"
-                : $"\tERROR: could not create {outputFilePath}");
+            Console.WriteLine(File.Exists(outputXmlPath)
+                ? $"\t{outputXmlPath} {(bXmlFileExisted ? "replaced" : "created")}"
+                : $"\tERROR: could not create {outputXmlPath}");
         }
 
 
@@ -348,8 +315,7 @@ namespace AcrossLiteToText
             Console.WriteLine("AcrossLiteToText foldername      (convert all .puz files in folder)");
             Console.WriteLine("AcrossLiteToText .               (use . for current folder)");
             Console.WriteLine("AcrossLiteToText in out          (specify input and output folders)");
-            Console.WriteLine("AcrossLiteToText in out formattedFile  (all XML data packaged into single file)");
-            Console.WriteLine("AcrossLiteToText in out formattedFile [format] (all XML data packaged into single file, JSON one crossword per file)");
+            Console.WriteLine("AcrossLiteToText in out formattedFile  (all XML and JSON data packaged into single files)");
             Console.WriteLine();
             Console.WriteLine("PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.");
             Console.WriteLine("You need permission from the rights holders for most public and for all commercial uses.");
