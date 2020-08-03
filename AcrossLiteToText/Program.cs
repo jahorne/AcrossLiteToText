@@ -40,7 +40,7 @@ namespace AcrossLiteToText
         {
             string from;                        // filename or directory of .puz file(s)
             string toFolder = null;             // directory to create converted .txt file(s)
-            bool createFile = false;             // will be true if XML file creation requested
+            bool createFile = false;             // will be true if file creation requested
             string targetFileName = string.Empty;
             string outputFilePath = string.Empty;
             Boolean xmlFormat = true;
@@ -349,7 +349,7 @@ namespace AcrossLiteToText
             Console.WriteLine("AcrossLiteToText .               (use . for current folder)");
             Console.WriteLine("AcrossLiteToText in out          (specify input and output folders)");
             Console.WriteLine("AcrossLiteToText in out formattedFile  (all XML data packaged into single file)");
-            Console.WriteLine("AcrossLiteToText in out formattedFile [format] (all XML data packaged into single file)");
+            Console.WriteLine("AcrossLiteToText in out formattedFile [format] (all XML data packaged into single file, JSON one crossword per file)");
             Console.WriteLine();
             Console.WriteLine("PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.");
             Console.WriteLine("You need permission from the rights holders for most public and for all commercial uses.");
