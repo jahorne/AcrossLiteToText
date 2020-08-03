@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml;
+using Newtonsoft.Json;
 
 // Copyright (C) 2020, Jim Horne
 //
@@ -39,9 +40,10 @@ namespace AcrossLiteToText
         {
             string from;                        // filename or directory of .puz file(s)
             string toFolder = null;             // directory to create converted .txt file(s)
-            bool createXml = false;             // will be true if XML file creation requested
-            string xmlFileName = string.Empty;
-            string xmlFilePath = string.Empty;
+            bool createFile = false;             // will be true if XML file creation requested
+            string targetFileName = string.Empty;
+            string outputFilePath = string.Empty;
+            Boolean xmlFormat = true;
 
             List<FileInfo> fileList = new List<FileInfo>();     // files to convert
 
@@ -62,8 +64,14 @@ namespace AcrossLiteToText
 
                 if (args.Length > 2)
                 {
-                    createXml = true;           // XML file included
-                    xmlFileName = args[2];
+                    createFile = true;           // target file name included
+                    targetFileName = args[2];
+                }
+
+                //If JSON format requested
+                if (args.Length > 3 && args[3].ToLower().Equals("json"))
+                {
+                    xmlFormat = false;
                 }
             }
 
@@ -136,23 +144,39 @@ namespace AcrossLiteToText
                 }
             }
 
-            // If no XmlFileName specified in args, ask for it.
+            // If no FileName specified in args, ask for it.
 
-            if (!createXml)
+            if (!createFile)
             {
-                Console.Write($"XML file name in {toFolder} (or Enter for none): ");
-                xmlFileName = Console.ReadLine();
-                createXml = !string.IsNullOrWhiteSpace(xmlFileName);
+                Console.Write($"Formatted file name in {toFolder} (or Enter for none): ");
+                targetFileName = Console.ReadLine();
+                createFile = !string.IsNullOrWhiteSpace(targetFileName);
             }
 
-            // If we have an XML file, get the full path and make sure it has the correct extension
+            // If no file type specified in args, ask for it.
 
-            if (createXml)
+            if (args.Length < 4 || string.IsNullOrEmpty(args[3]))
             {
-                xmlFilePath = $"{toFolder}{Path.DirectorySeparatorChar}{xmlFileName}";
+                Console.Write($"Select an output file type: 'XML' or 'JSON' (Default is XML): ");
+                string formatChoice = Console.ReadLine();
+                xmlFormat = string.IsNullOrEmpty(formatChoice) || !"json".Equals(formatChoice.ToLower());   //Default to XML unless 'json' is specifically requested
+                createFile = !string.IsNullOrWhiteSpace(targetFileName);
+            }
 
-                if (!xmlFilePath.EndsWith(".xml"))
-                    xmlFilePath += ".xml";
+            // If we have a file, get the full path and make sure it has the correct extension
+
+            if (createFile)
+            {
+                outputFilePath = $"{toFolder}{Path.DirectorySeparatorChar}{targetFileName}";
+
+                if (xmlFormat) { 
+                    if (!outputFilePath.EndsWith(".xml"))
+                        outputFilePath += ".xml";
+                } else
+                {
+                    if (!outputFilePath.EndsWith(".json"))
+                        outputFilePath += ".json";
+                }
             }
 
             if (fileList.Count == 0)
@@ -208,21 +232,60 @@ namespace AcrossLiteToText
 
                 // Save the Crossword object to serialize it to XML.
 
-                if (createXml)
+                if (createFile)
                     crosswordList.Add(puz.CrosswordObject);
             }
 
-            // XML output. All results are in a single XML file.
-
-            if (!createXml || crosswordList.Count == 0)
+            if (!createFile || crosswordList.Count == 0)
                 return;
+
+            if(!xmlFormat)  //If JSON format output
+            {
+                int count = 1;
+                List<String> created = new List<String>();
+                List<String> existed = new List<String>();
+                foreach(Crossword crossword in crosswordList) {
+                    if (File.Exists(outputFilePath))
+                    {
+                        existed.Add(outputFilePath);
+                    } else
+                    {
+                        created.Add(outputFilePath);
+                    }
+                    File.WriteAllText(outputFilePath, JsonConvert.SerializeObject(crossword, Newtonsoft.Json.Formatting.Indented));
+                    outputFilePath = outputFilePath.Remove(outputFilePath.Length - 5) + count + ".json";    //Increment file name, output one crossword per JSON file
+                    count++;
+                }
+
+                if(created.Count != 0)
+                {
+                    Console.WriteLine("JSON files created: ");
+                    foreach(String str in created) {
+                        Console.WriteLine(str);
+                    }
+                }
+
+                if (existed.Count != 0)
+                {
+                    Console.WriteLine("JSON files created: ");
+                    foreach (String str in existed)
+                    {
+                        Console.WriteLine(str);
+                    }
+                }
+
+                return;
+
+            }
+
+            // XML output. All results are in a single XML file.
 
             XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
             string comment = $"Generated from AcrossLiteToText on {DateTime.Now}. See https://github.com/jahorne/AcrossLiteToText.";
             string comment2 = $"Format is based on XPF 2.0 described at https://www.xwordinfo.com/XPF.";
 
-            bool bXmlFileExisted = File.Exists(xmlFilePath);
-            XmlWriter writer = XmlWriter.Create(xmlFilePath, settings);
+            bool bXmlFileExisted = File.Exists(outputFilePath);
+            XmlWriter writer = XmlWriter.Create(outputFilePath, settings);
 
             Console.WriteLine();
             Console.WriteLine("XML file");
@@ -234,7 +297,7 @@ namespace AcrossLiteToText
             if (crosswordList.Count == 1)
             {
                 doc = Utilities.SerializeToXmlDocument(crosswordList.First());
-                
+
             }
 
             // If more than one puzzle is found, create a single XML file with one <Crosswords>
@@ -263,9 +326,10 @@ namespace AcrossLiteToText
 
             writer.Close();
 
-            Console.WriteLine(File.Exists(xmlFilePath)
-                ? $"\t{xmlFilePath} {(bXmlFileExisted ? "replaced" : "created")}"
-                : $"\tERROR: could not create {xmlFilePath}");
+
+            Console.WriteLine(File.Exists(outputFilePath)
+                ? $"\t{outputFilePath} {(bXmlFileExisted ? "replaced" : "created")}"
+                : $"\tERROR: could not create {outputFilePath}");
         }
 
 
@@ -284,7 +348,8 @@ namespace AcrossLiteToText
             Console.WriteLine("AcrossLiteToText foldername      (convert all .puz files in folder)");
             Console.WriteLine("AcrossLiteToText .               (use . for current folder)");
             Console.WriteLine("AcrossLiteToText in out          (specify input and output folders)");
-            Console.WriteLine("AcrossLiteToText in out xmlFile  (all XML data packaged into single file)");
+            Console.WriteLine("AcrossLiteToText in out formattedFile  (all XML data packaged into single file)");
+            Console.WriteLine("AcrossLiteToText in out formattedFile [format] (all XML data packaged into single file)");
             Console.WriteLine();
             Console.WriteLine("PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.");
             Console.WriteLine("You need permission from the rights holders for most public and for all commercial uses.");
