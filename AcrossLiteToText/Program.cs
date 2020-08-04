@@ -38,9 +38,9 @@ namespace AcrossLiteToText
     {
         private static void Main(string[] args)
         {
-            string from;                        // filename or directory of .puz file(s)
-            string toFolder = null;             // directory to create converted .txt file(s)
-            bool createFile = false;             // will be true if file creation requested
+            string from;                            // filename or directory of .puz file(s)
+            string toFolder = null;                 // directory to create converted .txt file(s)
+            bool createFile = false;                // will be true if file creation requested
             string targetFileName = string.Empty;
             string outputXmlPath = string.Empty;
             string outputJsonPath = string.Empty;
@@ -67,7 +67,6 @@ namespace AcrossLiteToText
                     createFile = true;           // target file name included
                     targetFileName = args[2];
                 }
-
             }
 
             // If we didn't get a from file or folder, bail.
@@ -164,9 +163,8 @@ namespace AcrossLiteToText
                 else
                 {
                     outputJsonPath = outputXmlPath + ".json";
-                    outputXmlPath = outputXmlPath + ".xml";
+                    outputXmlPath += ".xml";
                 }
-
             }
 
             if (fileList.Count == 0)
@@ -231,7 +229,7 @@ namespace AcrossLiteToText
 
             //Write to JSON file
 
-            File.WriteAllText(outputJsonPath, JsonSerializer.Serialize(crosswordList, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(outputJsonPath, JsonSerializer.Serialize(crosswordList));
 
             Console.WriteLine(File.Exists(outputXmlPath) ? "JSON files replaced: " : "JSON files created: ");
 
@@ -254,7 +252,6 @@ namespace AcrossLiteToText
             if (crosswordList.Count == 1)
             {
                 doc = Utilities.SerializeToXmlDocument(crosswordList.First());
-
             }
 
             // If more than one puzzle is found, create a single XML file with one <Crosswords>
@@ -295,21 +292,21 @@ namespace AcrossLiteToText
         private static void DisplayUsage()
         {
             Console.WriteLine();
-            Console.WriteLine("AcrossLiteToText converts Across Lite .puz files to text and XML files.");
+            Console.WriteLine("AcrossLiteToText version 2.3 converts Across Lite .puz files to text, XML, and Json files.");
             Console.WriteLine();
-            Console.WriteLine("General usage pattern: \tAcrossLiteToText from to xmlFile");
+            Console.WriteLine("General usage pattern: \tAcrossLiteToText from to formattedFile");
             Console.WriteLine("All parameters are optional. Examples:");
             Console.WriteLine();
-            Console.WriteLine("AcrossLiteToText filename.puz    (convert single file)");
-            Console.WriteLine("AcrossLiteToText foldername      (convert all .puz files in folder)");
-            Console.WriteLine("AcrossLiteToText .               (use . for current folder)");
-            Console.WriteLine("AcrossLiteToText in out          (specify input and output folders)");
+            Console.WriteLine("AcrossLiteToText filename.puz          (convert single file)");
+            Console.WriteLine("AcrossLiteToText foldername            (convert all .puz files in folder)");
+            Console.WriteLine("AcrossLiteToText .                     (use . for current folder)");
+            Console.WriteLine("AcrossLiteToText in out                (specify input and output folders)");
             Console.WriteLine("AcrossLiteToText in out formattedFile  (all XML and JSON data packaged into single files)");
             Console.WriteLine();
             Console.WriteLine("PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.");
             Console.WriteLine("You need permission from the rights holders for most public and for all commercial uses.");
             Console.WriteLine();
-            Console.WriteLine("See https://github.com/jahorne/AcrossLiteToText for more info.");
+            Console.WriteLine("See https://github.com/jahorne/AcrossLiteToText for Read Me, Wiki, and contributors.");
             Console.WriteLine();
             Console.WriteLine("This program (c) 2020 by Jim Horne, licensed under GNU General Public License v3.0.");
             Console.WriteLine();
