@@ -4,6 +4,7 @@ using System.Xml;
 using System.Xml.Serialization;
 // ReSharper disable NotAccessedField.Global
 // ReSharper disable CollectionNeverQueried.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
 
 
 // Copyright (C) 2020, Jim Horne
@@ -31,37 +32,40 @@ namespace AcrossLiteToText
 
     public class Dimensions
     {
-        public int Rows;
-        public int Cols;
+        public int Rows { get; set; }
+        public int Cols { get; set; }
     }
 
     public class Clue
     {
-        [XmlAttribute] public int Num;
-        [XmlAttribute] public string Ans;
-        [XmlText] public string Text;
+        [XmlAttribute] public int Num { get; set; }
+        [XmlAttribute] public string Ans { get; set; }
+        [XmlText] public string Text { get; set; }
     }
 
     public class Row
     {
-        [XmlText] public string RowText;
+        [XmlText] public string RowText { get; set; }
     }
     public class Rebus
     {
-        [XmlAttribute] public string Codes;
-        [XmlText] public bool IsRebus;
+        [XmlAttribute] public string Codes { get; set; }
+        [XmlText] public bool IsRebus { get; set; }
     }
 
     public class Crossword
     {
-        public string Title, Author, Copyright;
-        public Dimensions Size;
-        public List<Row> Grid;
-        public List<Clue> Across, Down;
-        public string NotePad;
-        public bool HasCircles;
-        public Rebus IsRebus;
-    }
+        public string Title { get; set; }
+        public string Author { get; set; }
+        public string Copyright { get; set; }
+        public Dimensions Size { get; set; }
+        public List<Row> Grid { get; set; }
+        public List<Clue> Across{ get; set; }
+        public List<Clue> Down{ get; set; }
+        public string NotePad { get; set; }
+        public bool HasCircles { get; set; }
+        public Rebus IsRebus { get; set; }
+}
 
     public class Crosswords
     {
