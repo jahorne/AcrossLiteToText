@@ -154,7 +154,9 @@ namespace AcrossLiteToText
                 outputXmlPath = $"{toFolder}{Path.DirectorySeparatorChar}{targetFileName}";
 
                 if (outputXmlPath.EndsWith(".xml"))
+                {
                     outputJsonPath = outputXmlPath.Substring(outputXmlPath.Length - 4) + ".json";
+                }
                 else if (outputXmlPath.EndsWith(".json"))
                 {
                     outputJsonPath = outputXmlPath;
@@ -227,37 +229,30 @@ namespace AcrossLiteToText
             if (!createFile || crosswordList.Count == 0)
                 return;
 
-            //Write to JSON file
-
-            File.WriteAllText(outputJsonPath, JsonSerializer.Serialize(crosswordList));
-
-            Console.WriteLine(File.Exists(outputXmlPath) ? "JSON files replaced: " : "JSON files created: ");
-
-            // XML output. All results are in a single XML file.
-
-            XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
-            string comment = $"Generated from AcrossLiteToText on {DateTime.Now}. See https://github.com/jahorne/AcrossLiteToText.";
-            const string comment2 = "Format is based on XPF 2.0 described at https://www.xwordinfo.com/XPF.";
-
-            bool bXmlFileExisted = File.Exists(outputXmlPath);
-            XmlWriter writer = XmlWriter.Create(outputXmlPath, settings);
+            // Write to JSON and XML, each in a single file for all puzzles parsed
 
             Console.WriteLine();
-            Console.WriteLine("XML file");
-
-            // If exactly one puzzle is found, create an XML file with a single <Crossword> node.
+            Console.WriteLine("XML and JSON files:");
+            Console.WriteLine();
 
             XmlDocument doc;
+            string json;
+
+            bool bXmlFileExisted = File.Exists(outputXmlPath);
+            bool bJsonFileExisted = File.Exists(outputJsonPath);
+
+            // If exactly one puzzle is found, create an XML file with a single <Crossword> node.
 
             if (crosswordList.Count == 1)
             {
                 doc = Utilities.SerializeToXmlDocument(crosswordList.First());
+                json = JsonSerializer.Serialize(crosswordList.First());
             }
 
             // If more than one puzzle is found, create a single XML file with one <Crosswords>
             // node, and a child <Crossword> node for each puzzle.
 
-            else if (crosswordList.Count > 1)
+            else
             {
                 Crosswords combinedList = new Crosswords { Crossword = new List<Crossword>() };
 
@@ -265,24 +260,35 @@ namespace AcrossLiteToText
                     combinedList.Crossword.Add(crossword);
 
                 doc = Utilities.SerializeToXmlDocument(combinedList);
+                json = JsonSerializer.Serialize(crosswordList);
             }
-            else
-            {
-                writer.Close();
-                return;
-            }
+
+            // Write XML file
+
+            string comment = $"Generated from AcrossLiteToText on {DateTime.Now}. See https://github.com/jahorne/AcrossLiteToText.";
+            const string comment2 = "Format is based on XPF 2.0 described at https://www.xwordinfo.com/XPF.";
 
             XmlComment xmlComment = doc.CreateComment(comment);
             doc.InsertBefore(xmlComment, doc.DocumentElement);
             XmlComment xmlComment2 = doc.CreateComment(comment2);
             doc.InsertBefore(xmlComment2, doc.DocumentElement);
-            doc.Save(writer);
 
+            XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
+            XmlWriter writer = XmlWriter.Create(outputXmlPath, settings);
+            doc.Save(writer);
             writer.Close();
 
             Console.WriteLine(File.Exists(outputXmlPath)
                 ? $"\t{outputXmlPath} {(bXmlFileExisted ? "replaced" : "created")}"
                 : $"\tERROR: could not create {outputXmlPath}");
+
+            // Write Json file
+
+            File.WriteAllText(outputJsonPath, json);
+
+            Console.WriteLine(File.Exists(outputJsonPath)
+                ? $"\t{outputJsonPath} {(bJsonFileExisted ? "replaced" : "created")}"
+                : $"\tERROR: could not create {outputJsonPath}");
         }
 
 
