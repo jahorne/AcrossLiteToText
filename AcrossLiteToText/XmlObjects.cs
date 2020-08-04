@@ -4,6 +4,7 @@ using System.Xml;
 using System.Xml.Serialization;
 // ReSharper disable NotAccessedField.Global
 // ReSharper disable CollectionNeverQueried.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
 
 
 // Copyright (C) 2020, Jim Horne

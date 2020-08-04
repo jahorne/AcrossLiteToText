@@ -233,23 +233,13 @@ namespace AcrossLiteToText
 
             File.WriteAllText(outputJsonPath, JsonSerializer.Serialize(crosswordList, new JsonSerializerOptions { WriteIndented = true }));
 
-            if (File.Exists(outputXmlPath))
-            {
-                Console.WriteLine("JSON files replaced: ");
-            } else
-            {
-                Console.WriteLine("JSON files created: ");
-            }
-
-
-            return;
-
+            Console.WriteLine(File.Exists(outputXmlPath) ? "JSON files replaced: " : "JSON files created: ");
 
             // XML output. All results are in a single XML file.
 
             XmlWriterSettings settings = new XmlWriterSettings { Indent = true, Encoding = Encoding.UTF8 };
             string comment = $"Generated from AcrossLiteToText on {DateTime.Now}. See https://github.com/jahorne/AcrossLiteToText.";
-            string comment2 = $"Format is based on XPF 2.0 described at https://www.xwordinfo.com/XPF.";
+            const string comment2 = "Format is based on XPF 2.0 described at https://www.xwordinfo.com/XPF.";
 
             bool bXmlFileExisted = File.Exists(outputXmlPath);
             XmlWriter writer = XmlWriter.Create(outputXmlPath, settings);
@@ -292,7 +282,6 @@ namespace AcrossLiteToText
             doc.Save(writer);
 
             writer.Close();
-
 
             Console.WriteLine(File.Exists(outputXmlPath)
                 ? $"\t{outputXmlPath} {(bXmlFileExisted ? "replaced" : "created")}"
