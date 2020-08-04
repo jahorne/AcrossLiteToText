@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Text.Json.Serialization;
 using System.Xml;
 using System.Xml.Serialization;
 // ReSharper disable NotAccessedField.Global
@@ -40,12 +41,12 @@ namespace AcrossLiteToText
     {
         [XmlAttribute] public int Num { get; set; }
         [XmlAttribute] public string Ans { get; set; }
-        [XmlText] public string Text { get; set; }
+        [XmlText] [JsonPropertyName("Clue")] public string Text { get; set; }
     }
 
     public class Row
     {
-        [XmlText] public string RowText { get; set; }
+        [XmlText][JsonPropertyName("Row")] public string RowText { get; set; }
     }
     public class Rebus
     {
