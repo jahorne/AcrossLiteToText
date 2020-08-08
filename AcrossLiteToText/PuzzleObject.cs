@@ -92,6 +92,12 @@ namespace AcrossLiteToText
 
         private readonly Dictionary<string, char> _rebusDict = new Dictionary<string, char>();
 
+        // Binary file markers for circles and rebus data
+
+        private const string CircleMarker = "GEXT";
+        private const string RebusMarker = "GRBS";
+        private const string FixedRebusMarker = "RUSR";
+
 
         /// <summary>
         /// Constructor takes a byte array of the .puz file contents.
@@ -135,7 +141,7 @@ namespace AcrossLiteToText
 
             int answerOffset = gridOffset + _gridSize;
             int nOff = answerOffset;
-            bool isManuallySolved = false; // assume didn't have to manually enter solution
+            bool isManuallySolved = false;  // assume didn't have to manually enter solution
 
             // go to first non-black square
 
@@ -213,7 +219,8 @@ namespace AcrossLiteToText
             // and they fill the relevant arrays.
 
             _hasCircles = ParseCircles(b, i);
-            _isRebus = ParseRebus(isManuallySolved, b, i);
+
+            _isRebus = isManuallySolved ? ParseFixedRebus(b, i) : ParseRebus(b, i);
 
             // Figure out clues. They are ordered in Across Lite in an odd way.
             // Look for the next numbered cell. If an Across answer starts there,
@@ -341,25 +348,13 @@ namespace AcrossLiteToText
         /// <returns>true if at least one circle was found</returns>
         private bool ParseCircles(IReadOnlyList<byte> b, int n)
         {
-            const string marker = "GEXT";   // marks the start of the circle data
-            bool found = false;             // assume none found
+            // Look for "GEXT" which defines the start of the circle data. It's existence is necessary,
+            // but search for real circle data to be sure.
 
-            // Search for marker that indicates start of circle data
-
-            while (n < b.Count - _gridSize)
-            {
-                if (b[n] == marker[0] && b[n + 1] == marker[1] && b[n + 2] == marker[2] && b[n + 3] == marker[3])
-                {
-                    found = true;           // need to check later
-                    break;
-                }
-
-                n++;
-            }
+            bool found = FindMarker(b, CircleMarker, ref n);
 
             if (found)              // if marker found (might be bogus)
             {
-                n += 8;             // offset from GEXT
                 found = false;      // reset
 
                 _hasCircle = new bool[_rowCount, _colCount];    // array to store circle data
@@ -386,41 +381,25 @@ namespace AcrossLiteToText
         /// <summary>
         /// Fill _rebusKeys[r, c] array with key for each rebus entry found.
         /// Convert rebus details into dictionary.
-        /// The standard rebus data indicator is GRBS but RUSR is used if
-        /// the puzzle has been manually solved, perhaps because it is locked.
         /// </summary>
-        /// <param name="isManuallySolved">If true, look at user-entered solution</param>
         /// <param name="b">binary array to parse</param>
-        /// <param name="n">offset into b to start searching</param>
+        /// <param name="index">offset into b to start searching</param>
         /// <returns>true if at least one rebus entry found</returns>
-        private bool ParseRebus(bool isManuallySolved, IReadOnlyList<byte> b, int n)
+        private bool ParseRebus(IReadOnlyList<byte> b, int index)
         {
-            string marker = isManuallySolved ? "RUSR" : "GRBS";
-            bool found = false;
+            bool found = FindMarker(b, RebusMarker, ref index);     // look for "GRBS"
 
-            while (n < b.Count - _gridSize)
+            if (found)
             {
-                if (b[n] == marker[0] && b[n + 1] == marker[1] && b[n + 2] == marker[2] && b[n + 3] == marker[3])
-                {
-                    found = true; // need to check later
-                    break;
-                }
+                found = false;      // reset and look for real data
 
-                n++;
-            }
-
-            if (found)          // if marker found (might be bogus)
-            {
-                n += 8;         // offset from marker
-                found = false;  // reset
-
-                _rebusKeys = new int[_rowCount, _colCount];     // array to location of rebus squares
+                _rebusKeys = new int[_rowCount, _colCount];         // location of rebus squares
 
                 for (int row = 0; row < _rowCount; row++)
                 {
                     for (int col = 0; col < _colCount; col++)
                     {
-                        int rebusKey = b[n++];
+                        int rebusKey = b[index++];
 
                         _rebusKeys[row, col] = rebusKey;
 
@@ -433,16 +412,86 @@ namespace AcrossLiteToText
 
                 if (found)
                 {
-                    n += 9;     // skip to start of substring table
+                    index += 9;     // skip to start of substring table
 
-                    StringBuilder sb = new StringBuilder();
+                    string rebusString = string.Empty;
 
-                    while (b[n] != 0)
-                        sb.Append((char)b[n++]);
+                    while (b[index] != 0)
+                        rebusString += (char)b[index++];
 
-                    _crackedRebusCode = CrackRebusCode(sb.ToString());
+                    _crackedRebusCode = CrackRebusCode(rebusString);
                 }
             }
+
+            return found;
+        }
+
+
+        /// <summary>
+        /// If puzzle solutions have been manually entered into a saved Across Lite file, rebus
+        /// entries must be parsed in a different way. Expanded answers are part of a byte stream
+        /// starting past the "RUSR" marker. The function turns that into a standard rebus string,
+        /// and then cracks that string in the usual way.
+        ///
+        /// A dictionary is used to handle duplicate rebus entries, so they can reuse the same keys.
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        private bool ParseFixedRebus(IReadOnlyList<byte> b, int index)
+        {
+            if (!FindMarker(b, FixedRebusMarker, ref index))    // look for "RUSR"
+                return false;
+
+            // Marker found, so look for data
+
+            int rebusKey = 0;       // keys start here
+            bool found = false;     // initial assumption
+
+            string rebusString = string.Empty;              // string to be "cracked"
+
+            _rebusKeys = new int[_rowCount, _colCount];     // location of rebus squares
+
+            Dictionary<string, int> valueToKey = new Dictionary<string, int>();
+
+            for (int r = 0; r < _rowCount; r++)
+            {
+                for (int c = 0; c < _colCount; c++)
+                {
+                    if (b[index] != 0)
+                    {
+                        found = true;
+                        string rebusValue = string.Empty;
+
+                        while (b[index] != 0)
+                            rebusValue += (char)b[index++];
+
+                        // Reuse key if we've seen this value (rebus string) before.
+                        // Otherwise, use current key and update it for next time.
+                        // Note that AcrossLite stores (key+1) in its tables.
+
+                        if (valueToKey.TryGetValue(rebusValue, out int existingKey))
+                        {
+                            _rebusKeys[r, c] = existingKey + 1;
+                        }
+                        else
+                        {
+                            valueToKey.Add(rebusValue, rebusKey);
+                            rebusString += $"{rebusKey:D2}:{rebusValue};";
+
+                            // Use the incremented value (because Across Lite requires the +1)
+                            // and then it's ready for the next value.
+
+                            _rebusKeys[r, c] = ++rebusKey;
+                        }
+                    }
+
+                    index++;
+                }
+            }
+
+            if (found)
+                _crackedRebusCode = CrackRebusCode(rebusString);
 
             return found;
         }
@@ -653,6 +702,37 @@ namespace AcrossLiteToText
             }
 
             return rows;
+        }
+
+
+        /// <summary>
+        /// Across Lite binary files use four-character markers to define the location of optional info.
+        /// This function returns true if the marker is found, and updates index to the location of
+        /// 8 bytes past the start of the marker. That's where the relevant data starts.
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="marker"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        private bool FindMarker(IReadOnlyList<byte> b, string marker, ref int index)
+        {
+            bool bFound = false;    // default assumption
+
+            while (index < b.Count - (_rowCount * _colCount))
+            {
+                if (b[index] == marker[0] && b[index + 1] == marker[1] && b[index + 2] == marker[2] && b[index + 3] == marker[3])
+                {
+                    bFound = true;
+                    break;
+                }
+
+                index++;
+            }
+
+            if (bFound)
+                index += 8;         // actual data starts here
+
+            return bFound;
         }
     }
 }
