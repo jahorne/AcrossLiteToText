@@ -46,7 +46,7 @@ namespace AcrossLiteToText
 
     public class Row
     {
-        [XmlText][JsonPropertyName("Row")] public string RowText { get; set; }
+        [XmlText] [JsonPropertyName("Row")] public string RowText { get; set; }
     }
     public class Rebus
     {
@@ -61,12 +61,12 @@ namespace AcrossLiteToText
         public string Copyright { get; set; }
         public Dimensions Size { get; set; }
         public List<Row> Grid { get; set; }
-        public List<Clue> Across{ get; set; }
-        public List<Clue> Down{ get; set; }
+        public List<Clue> Across { get; set; }
+        public List<Clue> Down { get; set; }
         public string NotePad { get; set; }
         public bool HasCircles { get; set; }
         public Rebus IsRebus { get; set; }
-}
+    }
 
     public class Crosswords
     {

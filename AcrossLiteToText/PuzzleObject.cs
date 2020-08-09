@@ -63,7 +63,6 @@ namespace AcrossLiteToText
         private readonly string _title, _author, _copyright, _notepad;
         private readonly int _rowCount, _colCount;
         private readonly char[,] _grid;
-        private readonly int _gridSize;
         private readonly bool _isDiagramless;
         private const char Block = '.';
 
@@ -96,7 +95,7 @@ namespace AcrossLiteToText
 
         private const string CircleMarker = "GEXT";
         private const string RebusMarker = "GRBS";
-        private const string FixedRebusMarker = "RUSR";
+        private const string ManualRebusMarker = "RUSR";
 
 
         /// <summary>
@@ -118,9 +117,9 @@ namespace AcrossLiteToText
 
             // Grid dimensions
 
-            _colCount = b[columnsOffset];       // number of columns
-            _rowCount = b[rowsOffset];          // number of rows
-            _gridSize = _colCount * _rowCount;  // size of grid info in byte array
+            _colCount = b[columnsOffset];           // number of columns
+            _rowCount = b[rowsOffset];              // number of rows
+            int gridSize = _colCount * _rowCount;   // size of grid info in byte array
 
             // We now know how big the puzzle is so we can generate the grids
 
@@ -139,9 +138,9 @@ namespace AcrossLiteToText
             // 0x2E means black square (block) and 0x2D is empty square.
             // Note 0x2E is valid in both sections so find first non black square and check if it's a blank.
 
-            int answerOffset = gridOffset + _gridSize;
+            int answerOffset = gridOffset + gridSize;
             int nOff = answerOffset;
-            bool isManuallySolved = false;  // assume didn't have to manually enter solution
+            bool isManuallySolved = false;      // assume we're working with the published solution
 
             // go to first non-black square
 
@@ -206,7 +205,7 @@ namespace AcrossLiteToText
             // We're ready to start reading string data.
             // Start by moving i past the grid.
 
-            i = gridOffset + (2 * _gridSize);
+            i = gridOffset + (2 * gridSize);
 
             // Get title, author, and copyright. NextString() adjusts i along the way.
 
@@ -220,7 +219,7 @@ namespace AcrossLiteToText
 
             _hasCircles = ParseCircles(b, i);
 
-            _isRebus = isManuallySolved ? ParseFixedRebus(b, i) : ParseRebus(b, i);
+            _isRebus = isManuallySolved ? ParseManualRebus(b, i) : ParseRebus(b, i);
 
             // Figure out clues. They are ordered in Across Lite in an odd way.
             // Look for the next numbered cell. If an Across answer starts there,
@@ -433,20 +432,20 @@ namespace AcrossLiteToText
         /// starting past the "RUSR" marker. The function turns that into a standard rebus string,
         /// and then cracks that string in the usual way.
         ///
-        /// A dictionary is used to handle duplicate rebus entries, so they can reuse the same keys.
+        /// A dictionary is used to handle duplicate rebus entries.
         /// </summary>
         /// <param name="b"></param>
         /// <param name="index"></param>
         /// <returns></returns>
-        private bool ParseFixedRebus(IReadOnlyList<byte> b, int index)
+        private bool ParseManualRebus(IReadOnlyList<byte> b, int index)
         {
-            if (!FindMarker(b, FixedRebusMarker, ref index))    // look for "RUSR"
+            if (!FindMarker(b, ManualRebusMarker, ref index))   // look for "RUSR"
                 return false;
 
             // Marker found, so look for data
 
-            int rebusKey = 0;       // keys start here
-            bool found = false;     // initial assumption
+            int rebusKey = 0;           // keys start here
+            bool found = false;         // initial assumption
 
             string rebusString = string.Empty;              // string to be "cracked"
 
@@ -508,16 +507,14 @@ namespace AcrossLiteToText
         {
             Dictionary<int, string> dict = new Dictionary<int, string>();
 
-            string[] rawParts = str.Trim().Split(';');
-
-            // -1 below because we ignore the empty part from the trailing ";"
-
-            for (int n = 0; n < rawParts.Length - 1; n++)
+            foreach (string rebusData in str.Split(';'))
             {
-                string rebusData = rawParts[n];
-                string[] rebusParts = rebusData.Split(':');
-                int nKey = Convert.ToInt32(rebusParts[0]);
-                dict.Add(nKey + 1, rebusParts[1]);              // Key is number before colon plus offset (1)
+                if (!string.IsNullOrWhiteSpace(rebusData))
+                {
+                    string[] rebusParts = rebusData.Split(':');
+                    int nKey = Convert.ToInt32(rebusParts[0]);
+                    dict.Add(nKey + 1, rebusParts[1]);              // Key is number before colon plus + 1
+                }
             }
 
             return dict;
