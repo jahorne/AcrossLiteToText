@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30225.117
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AcrossLiteToText", "AcrossLiteToText\AcrossLiteToText.csproj", "{2B824B1F-A48F-4AB6-8CDA-8246661BFF06}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AcrossLiteToText", "src\AcrossLiteToText.csproj", "{2B824B1F-A48F-4AB6-8CDA-8246661BFF06}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
