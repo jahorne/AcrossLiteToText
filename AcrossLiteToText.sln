@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AcrossLiteToText", "src\Acr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{8CCF3645-8E83-4895-9CBF-E4850AD7E519}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AcrossLiteToText.Tests", "Tests\AcrossLiteToText.Tests\AcrossLiteToText.Tests.csproj", "{96AF4B1E-0360-4C34-B0E3-78D2C33D3A88}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AcrossLiteToText.Tests", "tests\AcrossLiteToText.Tests\AcrossLiteToText.Tests.csproj", "{96AF4B1E-0360-4C34-B0E3-78D2C33D3A88}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
