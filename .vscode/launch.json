@@ -10,9 +10,9 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/AcrossLiteToText/bin/Debug/netcoreapp3.1/AcrossLiteToText.dll",
+            "program": "${workspaceFolder}/src/AcrossLiteToText/bin/Debug/netcoreapp3.1/AcrossLiteToText.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/AcrossLiteToText",
+            "cwd": "${workspaceFolder}/src/AcrossLiteToText",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "integratedTerminal",
             "stopAtEntry": false
