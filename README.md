@@ -16,6 +16,8 @@ Interested in contributing? Fork, write some code, and submit a pull request.
 
 More XWord Info core functionality will be moved to Open Source over time.
 
+News: David Park has published a [JavaScript program with similar capabilities](https://github.com/david-j-park/puz2js). Check it out.
+
 **PLEASE RESPECT THE COPYRIGHTS ON PUBLISHED CROSSWORDS.**
 
 You need permission from the rights holders for most public and for all commercial uses.
